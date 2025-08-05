@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Junior</title>
+	<!-- PDF-lib -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+	<!-- PDF.js -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+	<script>
+    // ✅ 正確設定 workerSrc
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js";
+	</script>
+	<!-- Fluent UI -->
+	<script type="module" src="https://cdn.jsdelivr.net/npm/@fluentui/web-components/dist/web-components.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+        :root {
+            --neutral-foreground-rest: #1f1f1f;
+            --neutral-background-fill-rest: rgba(248, 248, 248, 0.8);
+            --neutral-stroke-default-rest: #e0e0e0;
+            --shadow-depth-4: 0 2px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.1);
+            --shadow-depth-8: 0 4px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.12);
+            --border-radius-medium: 6px;
+            --border-radius-large: 8px;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f0f2f5;
+            color: var(--neutral-foreground-rest);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background-color: var(--neutral-background-fill-rest);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--neutral-stroke-default-rest);
+            border-radius: var(--border-radius-large);
+            padding: 20px 30px;
+            box-shadow: var(--shadow-depth-8);
+        }
+
+        h1 { font-weight: 500; text-align: center; }
+		h4 { font-weight: 500; text-align: center; }
+        .subtitle { text-align: center; color: #606060; }
+        fluent-tabs::part(tablist) { border-bottom: 1px solid var(--neutral-stroke-default-rest); }
+        .tab-panel { padding: 20px 0; }
+
+        .file-upload-container {
+            border: 2px dashed #b0b0b0;
+            border-radius: var(--border-radius-medium);
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        .file-upload-container:hover { border-color: var(--accent-fill-rest, #0078d4); background-color: rgba(255, 255, 255, 0.8); }
+        .file-upload-container .material-icons { font-size: 48px; color: #606060; }
+
+        .file-info-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background-color: #e9f3fc; border-radius: var(--border-radius-medium); margin-top: 20px; font-weight: 500; }
+        .workspace { display:none; }
+        .workspace p { margin: 16px 0 8px 0; color: #424242; }
+
+        .file-preview-container {
+            display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; padding: 16px;
+            background-color: rgba(255, 255, 255, 0.6); border-radius: var(--border-radius-medium);
+            border: 1px solid #e0e0e0; min-height: 150px; align-content: flex-start;
+        }
+
+        .page-thumbnail, .document-preview-item {
+            background-color: #fff; border-radius: var(--border-radius-medium);
+            box-shadow: var(--shadow-depth-4); transition: box-shadow 0.2s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .page-thumbnail:hover, .document-preview-item:hover { box-shadow: var(--shadow-depth-8); }
+        
+        .page-thumbnail {
+            width: 250px; /* Base width */
+            height: 300px !important; /* Removed fixed height, will be dynamic */
+            padding: 16px 6px 6px 6px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden; /* Ensure content doesn't spill out */
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            position: relative; /* For dynamic height adjustment */
+            min-height: 150px; /* Minimum height for empty state or small thumbs */
+        }
+
+        .page-thumbnail .canvas-container {
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative; /* For canvas absolute positioning */
+            /* Add transition for rotation on the container */
+            transition: transform 0.2s ease-in-out;
+            transform-origin: center center;
+            box-sizing: border-box; /* Ensure padding and border are included */
+        }
+
+        .page-thumbnail canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 4px;
+            border: 1px solid #eee;
+            /* transition: transform 0.2s ease-in-out; /* Remove transform from canvas */
+            object-fit: contain; /* Ensure the canvas fits within its container while maintaining aspect ratio */
+            display: block; /* Remove extra space below canvas */
+        }
+
+        /* Adjust canvas container based on rotation */
+        .page-thumbnail[data-rotation="90"] .canvas-container,
+        .page-thumbnail[data-rotation="270"] .canvas-container {
+            /* When rotated 90/270 degrees, swap width and height */
+            /* This is a visual adjustment. The canvas itself should still be rendered correctly. */
+            /* The actual canvas dimensions will be controlled by JS for accurate aspect ratio */
+        }
+
+        .page-thumbnail.selected-for-deletion { border-color: #d13438; box-shadow: 0 0 0 2px #d13438; }
+        .page-number { font-size: 12px; color: #666; margin-top: 5px; }
+        .rotation-controls { margin-top: 8px; display: flex; justify-content: space-evenly; }
+
+        .document-preview-item { width: 180px; padding: 8px; display: flex; flex-direction: column; align-items: center; }
+        .document-preview-item .file-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; word-break: break-all; color: #333; width: 100%; text-align: center; height: 40px; overflow: hidden; }
+        .document-preview-item canvas { border-radius: 4px; border: 1px solid #eee; }
+        .document-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 10px; }
+        .drag-handle { cursor: move; color: #757575; }
+        .document-preview-item.dragging { opacity: 0.5; }
+
+        .action-button-container { text-align: center; margin-top: 24px; }
+        
+        .loader-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        .loader-overlay p { margin-top: 16px; font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <h1>PDF Junior</h1>
+		<h4>code with Gemini</h4>
+		<p class="subtitle">⚠️本專案無法處理加密檔案。</p>
+        <p class="subtitle">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
+		
+        <fluent-tabs>
+            <fluent-tab id="tab-merge">合併檔案</fluent-tab>
+            <fluent-tab id="tab-delete">刪除頁面</fluent-tab>
+            <fluent-tab id="tab-rotate">旋轉頁面</fluent-tab>
+            <fluent-tab id="tab-image">圖片轉 PDF</fluent-tab>
+
+            <fluent-tab-panel id="panel-merge" class="tab-panel">
+                <div id="merge-upload-area">
+                    <div class="file-upload-container" onclick="document.getElementById('merge-pdf-upload').click();">
+					<span class="material-icons">add_to_photos</span>
+					<p>點擊此處或拖曳多個 PDF 檔案至此</p>
+					</div>
+                    <input type="file" id="merge-pdf-upload" accept=".pdf" multiple style="display:none;">
+                </div>
+                <div id="merge-workspace" class="workspace">
+                    <div class="file-info-bar" id="merge-file-info"></div>
+                    <p>預覽文件集，可透過按鈕或直接拖曳調整合併順序。</p>
+                    <div class="file-preview-container" id="merge-preview-area"></div>
+                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-merge">執行並儲存</fluent-button></div>
+                </div>
+            </fluent-tab-panel>
+            <fluent-tab-panel id="panel-delete" class="tab-panel">
+                 <div id="delete-upload-area">
+                    <div class="file-upload-container" onclick="document.getElementById('delete-pdf-upload').click();"><span class="material-icons">playlist_remove</span><p>點擊此處或拖曳 PDF 檔案至此</p></div>
+                    <input type="file" id="delete-pdf-upload" accept=".pdf" style="display:none;">
+                </div>
+                <div id="delete-workspace" class="workspace">
+                    <div class="file-info-bar" id="delete-file-info"></div>
+                    <p>點擊下方的頁面縮圖以選取您想刪除的頁面。</p>
+                    <div class="file-preview-container" id="delete-preview-area"></div>
+                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-delete">執行並儲存</fluent-button></div>
+                </div>
+            </fluent-tab-panel>
+            <fluent-tab-panel id="panel-rotate" class="tab-panel">
+                <div id="rotate-upload-area">
+                    <div class="file-upload-container" onclick="document.getElementById('rotate-pdf-upload').click();"><span class="material-icons">rotate_90_degrees_ccw</span><p>點擊此處或拖曳 PDF 檔案至此</p></div>
+                    <input type="file" id="rotate-pdf-upload" accept=".pdf" style="display:none;">
+                </div>
+                <div id="rotate-workspace" class="workspace">
+                    <div class="file-info-bar" id="rotate-file-info"></div>
+                    <p>點擊縮圖下方的按鈕以旋轉特定頁面。</p>
+                    <div class="file-preview-container" id="rotate-preview-area"></div>
+                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-rotate">執行並儲存</fluent-button></div>
+                </div>
+            </fluent-tab-panel>
+            <fluent-tab-panel id="panel-image" class="tab-panel">
+                <div id="image-upload-area">
+                     <div class="file-upload-container" onclick="document.getElementById('image-upload').click();"><span class="material-icons">add_photo_alternate</span><p>點擊此處或拖曳圖片檔案至此</p></div>
+                    <input type="file" id="image-upload" accept="image/*" multiple style="display:none;">
+                </div>
+                <div id="image-workspace" class="workspace">
+                    <div class="file-info-bar" id="image-file-info"></div>
+                    <p>預覽您上傳的圖片，將依此順序轉換為單一 PDF。</p>
+                    <div class="file-preview-container" id="image-preview-area"></div>
+                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-image-to-pdf">執行並儲存</fluent-button></div>
+                </div>
+            </fluent-tab-panel>
+        </fluent-tabs>
+    </div>
+
+    <div id="loader-overlay" class="loader-overlay">
+        <fluent-progress-ring></fluent-progress-ring>
+        <p id="loader-text">處理中...</p>
+    </div>
+
+    <script type="module">
+        const { PDFDocument, degrees } = PDFLib;
+        window.addEventListener('DOMContentLoaded', () => {
+            const state = {
+                merge: { files: [], buffers: {} },
+                delete: { file: null, pagesToDelete: new Set(), originalBuffer: null, originalPageDimensions: {} },
+                rotate: { file: null, rotations: {}, originalBuffer: null, originalPageDimensions: {} },
+                image: { files: [] }
+            };
+
+            const loaderOverlay = document.getElementById('loader-overlay');
+            const loaderText = document.getElementById('loader-text');
+
+            const ui = {
+                merge: { uploadArea: document.getElementById('merge-upload-area'), workspace: document.getElementById('merge-workspace'), input: document.getElementById('merge-pdf-upload'), info: document.getElementById('merge-file-info'), preview: document.getElementById('merge-preview-area'), execBtn: document.getElementById('execute-merge') },
+                delete: { uploadArea: document.getElementById('delete-upload-area'), workspace: document.getElementById('delete-workspace'), input: document.getElementById('delete-pdf-upload'), info: document.getElementById('delete-file-info'), preview: document.getElementById('delete-preview-area'), execBtn: document.getElementById('execute-delete') },
+                rotate: { uploadArea: document.getElementById('rotate-upload-area'), workspace: document.getElementById('rotate-workspace'), input: document.getElementById('rotate-pdf-upload'), info: document.getElementById('rotate-file-info'), preview: document.getElementById('rotate-preview-area'), execBtn: document.getElementById('execute-rotate') },
+                image: { uploadArea: document.getElementById('image-upload-area'), workspace: document.getElementById('image-workspace'), input: document.getElementById('image-upload'), info: document.getElementById('image-file-info'), preview: document.getElementById('image-preview-area'), execBtn: document.getElementById('execute-image-to-pdf') }
+            };
+            
+            function showLoader(text = '處理中...') { loaderText.textContent = text; loaderOverlay.style.display = 'flex'; }
+            function hideLoader() { loaderOverlay.style.display = 'none'; }
+            
+			function clearWorkspace(module) {
+				const currentUI = ui[module]; if (!currentUI) return;
+				state[module] = { 
+					files: [], 
+					buffers: {}, 
+					pagesToDelete: new Set(), 
+					rotations: {}, 
+					file: null, 
+					originalBuffer: null, 
+					originalPageDimensions: {} // 確保這一行存在且正確
+					};
+				currentUI.preview.innerHTML = '';
+				currentUI.uploadArea.style.display = 'block';
+				currentUI.workspace.style.display = 'none';
+				currentUI.input.value = '';
+				}
+
+            function createFileInfoElement(fileName, module) {
+                const infoBar = ui[module].info;
+                infoBar.innerHTML = '';
+                const textSpan = document.createElement('span');
+                textSpan.textContent = fileName;
+                infoBar.appendChild(textSpan);
+                const closeButton = document.createElement('fluent-button');
+                closeButton.setAttribute('appearance', 'stealth');
+                closeButton.innerHTML = `<span class="material-icons" style="font-size: 16px;">close</span>`;
+                closeButton.addEventListener('click', () => clearWorkspace(module));
+                infoBar.appendChild(closeButton);
+            }
+
+            function downloadFile(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            }
+
+            function truncateFilename(name, maxLength = 25) {
+                if (name.length <= maxLength) return name;
+                const extIndex = name.lastIndexOf('.');
+                const extension = extIndex !== -1 ? name.substring(extIndex) : '';
+                const nameWithoutExt = extIndex !== -1 ? name.substring(0, extIndex) : name;
+                const charsToShow = maxLength - extension.length - 3;
+                if (charsToShow < 4) return name.substring(0, maxLength - 3) + '...';
+                const frontChars = Math.ceil(charsToShow / 2);
+                const backChars = Math.floor(charsToShow / 2);
+                return nameWithoutExt.substring(0, frontChars) + '...' + nameWithoutExt.substring(nameWithoutExt.length - backChars) + extension;
+            }
+
+            // ---- Merge Module ----
+            ui.merge.input.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
+                if (files.length > 0) {
+                    ui.merge.uploadArea.style.display = 'none';
+                    ui.merge.workspace.style.display = 'block';
+                    createFileInfoElement(`${files.length} 個 PDF 檔案`, 'merge');
+                    renderMergePreviews(files);
+                }
+            });
+
+            async function renderMergePreviews(files) {
+                state.merge.files = files;
+                ui.merge.preview.innerHTML = '';
+                showLoader('正在載入文件預覽...');
+                state.merge.buffers = {};
+                const promises = files.map(async (file) => {
+                    const buffer = await file.arrayBuffer();
+                    state.merge.buffers[file.name] = buffer;
+                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+                    const page = await pdf.getPage(1);
+                    const viewport = page.getViewport({ scale: 0.3 });
+                    const canvas = document.createElement('canvas');
+                    canvas.height = viewport.height; canvas.width = viewport.width;
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                    return { file, canvas };
+                });
+                try {
+                    const results = await Promise.all(promises);
+                    results.forEach(({ file, canvas }, index) => {
+                        ui.merge.preview.appendChild(createDocumentPreviewItem(file, canvas, index, results.length));
+                    });
+                } catch (err) {
+                    console.error("預覽載入失敗:", err);
+                    alert("預覽載入失敗，檔案可能已損毀或格式不正確。");
+                } finally { hideLoader(); }
+            }
+            
+            function createDocumentPreviewItem(file, canvas, index, total) {
+                const item = document.createElement('div');
+                item.className = 'document-preview-item';
+                item.dataset.index = index; item.draggable = true;
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'file-name';
+                nameSpan.textContent = truncateFilename(file.name);
+                nameSpan.title = file.name;
+                item.appendChild(nameSpan); item.appendChild(canvas);
+                const controls = document.createElement('div');
+                controls.className = 'document-controls';
+                const leftBtn = document.createElement('fluent-button');
+                leftBtn.setAttribute('appearance', 'stealth');
+                leftBtn.innerHTML = `<span class="material-icons">arrow_back</span>`;
+                if (index === 0) leftBtn.disabled = true;
+                leftBtn.addEventListener('click', () => moveFile(index, index - 1));
+                const dragIcon = document.createElement('span');
+                dragIcon.className = 'material-icons drag-handle';
+                dragIcon.textContent = 'drag_indicator';
+                const rightBtn = document.createElement('fluent-button');
+                rightBtn.setAttribute('appearance', 'stealth');
+                rightBtn.innerHTML = `<span class="material-icons">arrow_forward</span>`;
+                if (index === total - 1) rightBtn.disabled = true;
+                rightBtn.addEventListener('click', () => moveFile(index, index + 1));
+                controls.appendChild(leftBtn); controls.appendChild(dragIcon); controls.appendChild(rightBtn);
+                item.appendChild(controls);
+                item.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', index); setTimeout(() => item.classList.add('dragging'), 0); });
+                item.addEventListener('dragend', () => item.classList.remove('dragging'));
+                return item;
+            }
+
+            function moveFile(from, to) {
+                if (to < 0 || to >= state.merge.files.length) return;
+                const [item] = state.merge.files.splice(from, 1);
+                state.merge.files.splice(to, 0, item);
+                renderMergePreviews(state.merge.files);
+            }
+
+            ui.merge.preview.addEventListener('dragover', e => {
+                e.preventDefault();
+                const dragging = document.querySelector('.dragging'); if(!dragging) return;
+                const afterElement = [...ui.merge.preview.querySelectorAll('.document-preview-item:not(.dragging)')].reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = e.clientY - box.top - box.height / 2;
+                    return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+                if (afterElement == null) { ui.merge.preview.appendChild(dragging); } else { ui.merge.preview.insertBefore(dragging, afterElement); }
+            });
+            ui.merge.preview.addEventListener('drop', e => {
+                e.preventDefault();
+                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                const draggingDOM = ui.merge.preview.querySelector('.dragging');
+                if(draggingDOM) {
+                    const toIndex = Array.from(ui.merge.preview.children).indexOf(draggingDOM);
+                    moveFile(fromIndex, toIndex);
+                }
+            });
+
+            ui.merge.execBtn.addEventListener('click', async () => {
+                if (state.merge.files.length < 2) { alert('請上傳至少兩個 PDF 檔案進行合併！'); return; }
+                showLoader('正在合併檔案...');
+                try {
+                    const mergedPdf = await PDFDocument.create();
+                    for (const file of state.merge.files) {
+                        const donorPdf = await PDFDocument.load(state.merge.buffers[file.name]);
+                        const pages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
+                        pages.forEach(p => mergedPdf.addPage(p));
+                    }
+                    const bytes = await mergedPdf.save();
+                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), 'merged_document.pdf');
+                } catch (err) { console.error(err); alert("合併檔案時發生錯誤。"); } 
+                finally { hideLoader(); clearWorkspace('merge'); }
+            });
+
+            // ---- Delete & Rotate Common Renderer ----
+            async function renderSinglePdfPreviews(file, module) {
+                const previewArea = ui[module].preview;
+                previewArea.innerHTML = '';
+                showLoader('正在載入 PDF 預覽...');
+                try {
+                    const buffer = await file.arrayBuffer();
+                    state[module].originalBuffer = buffer;
+                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const viewport = page.getViewport({ scale: 1 }); // Use scale 1 to get original dimensions
+                        
+                        // Store original dimensions
+						state[module].originalPageDimensions[i] = { width: viewport.width, height: viewport.height };
+
+                        const canvas = document.createElement('canvas');
+                        const canvasContext = canvas.getContext('2d');
+                        
+                        // Render at a high resolution and then scale down with CSS for better quality
+                        const renderScale = 1.5; // Render at 1.5x for better clarity
+                        const renderViewport = page.getViewport({ scale: renderScale });
+                        canvas.width = renderViewport.width;
+                        canvas.height = renderViewport.height;
+                        await page.render({ canvasContext, viewport: renderViewport }).promise;
+
+                        const thumb = document.createElement('div');
+                        thumb.className = 'page-thumbnail';
+                        thumb.dataset.pageNum = i; // Store page number
+
+                        const canvasContainer = document.createElement('div');
+                        canvasContainer.className = 'canvas-container';
+                        canvasContainer.appendChild(canvas);
+                        thumb.appendChild(canvasContainer);
+                        
+                        const num = document.createElement('div');
+                        num.className = 'page-number';
+                        num.textContent = `第 ${i} 頁`;
+                        thumb.appendChild(num);
+
+                        if (module === 'delete') {
+                            thumb.addEventListener('click', () => {
+                                thumb.classList.toggle('selected-for-deletion');
+                                if (state.delete.pagesToDelete.has(i)) state.delete.pagesToDelete.delete(i);
+                                else state.delete.pagesToDelete.add(i);
+                            });
+                        } else if (module === 'rotate') {
+                            const controls = document.createElement('div');
+                            controls.className = 'rotation-controls';
+                            const leftBtn = document.createElement('fluent-button');
+                            leftBtn.setAttribute('appearance', 'stealth');
+                            leftBtn.innerHTML = `<span class="material-icons">rotate_left</span>`;
+                            leftBtn.addEventListener('click', (e) => { e.stopPropagation(); applyRotation(thumb, canvasContainer, i, -90); });
+                            
+                            const rightBtn = document.createElement('fluent-button');
+                            rightBtn.setAttribute('appearance', 'stealth');
+                            rightBtn.innerHTML = `<span class="material-icons">rotate_right</span>`;
+                            rightBtn.addEventListener('click', (e) => { e.stopPropagation(); applyRotation(thumb, canvasContainer, i, 90); });
+                            
+                            controls.appendChild(leftBtn); controls.appendChild(rightBtn);
+                            thumb.appendChild(controls);
+
+                            // Initialize rotation if any
+                            if (state.rotate.rotations[i] === undefined) {
+                                state.rotate.rotations[i] = 0; // Initialize to 0 if not set
+                            }
+                            // Apply initial rotation if necessary
+                            applyRotation(thumb, canvasContainer, i, 0); 
+                        }
+                        previewArea.appendChild(thumb);
+                    }
+                } catch (err) { console.error(err); alert("載入 PDF 預覽失敗。"); } finally { hideLoader(); }
+            }
+
+            // ---- Delete Module ----
+            ui.delete.input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    state.delete.file = file;
+                    ui.delete.uploadArea.style.display = 'none';
+                    ui.delete.workspace.style.display = 'block';
+                    createFileInfoElement(file.name, 'delete');
+                    renderSinglePdfPreviews(file, 'delete');
+                }
+            });
+            ui.delete.execBtn.addEventListener('click', async () => {
+                if (!state.delete.file || state.delete.pagesToDelete.size === 0) { alert('請先上傳 PDF 並選取要刪除的頁面！'); return; }
+                showLoader('正在刪除頁面...');
+                try {
+                    const pdfDoc = await PDFDocument.load(state.delete.originalBuffer);
+                    const pagesToKeep = Array.from({ length: pdfDoc.getPageCount() }, (_, i) => i).filter(i => !state.delete.pagesToDelete.has(i + 1));
+                    const newDoc = await PDFDocument.create();
+                    if (pagesToKeep.length > 0) {
+                        const copiedPages = await newDoc.copyPages(pdfDoc, pagesToKeep);
+                        copiedPages.forEach(p => newDoc.addPage(p));
+                    }
+                    const bytes = await newDoc.save();
+                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), `${state.delete.file.name.replace(/\.pdf$/i, '')}_deleted.pdf`);
+                } catch (err) { console.error(err); alert('刪除頁面時發生錯誤。'); } 
+                finally { hideLoader(); clearWorkspace('delete'); }
+            });
+
+            // ---- Rotate Module ----
+            ui.rotate.input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    state.rotate.file = file;
+                    state.rotate.rotations = {}; // Reset rotations for new file
+                    state.rotate.originalPageDimensions = {}; // Reset original dimensions for new file
+                    ui.rotate.uploadArea.style.display = 'none';
+                    ui.rotate.workspace.style.display = 'block';
+                    createFileInfoElement(file.name, 'rotate');
+                    renderSinglePdfPreviews(file, 'rotate');
+                }
+            });
+
+            function applyRotation(thumb, canvasContainer, pageNum, angleChange) {
+                // Get current rotation, default to 0 if not set
+                let currentRotation = state.rotate.rotations[pageNum] || 0;
+                // Add the angle change
+                const newRotation = currentRotation + angleChange;
+                // Store the new absolute rotation
+                state.rotate.rotations[pageNum] = newRotation;
+
+                // Update the CSS transform using the absolute rotation value
+                canvasContainer.style.transform = `rotate(${newRotation}deg)`;
+                thumb.dataset.rotation = (newRotation % 360 + 360) % 360; // Store 0-359 for CSS based on actual visual rotation
+
+                const originalDims = state.rotate.originalPageDimensions[pageNum];
+                if (!originalDims) {
+                    console.warn(`Original dimensions for page ${pageNum} not found.`);
+                    return;
+                }
+
+                const thumbWidth = 225 - 12; // Base width minus padding
+                const thumbHeight = 300 - 40; // Base height minus padding and controls space (approx)
+
+                let effectiveWidth, effectiveHeight;
+                // Determine the effective orientation based on the current absolute rotation
+                // Note: The `transform` doesn't change element's perceived width/height in flow
+                // We need to calculate how much space the rotated image *would* occupy
+                const angleMod90 = Math.abs(newRotation % 180); // 0 or 90
+                if (angleMod90 === 90) { // If rotated to portrait from landscape or vice versa
+                    effectiveWidth = originalDims.height;
+                    effectiveHeight = originalDims.width;
+                } else { // 0, 180, 360...
+                    effectiveWidth = originalDims.width;
+                    effectiveHeight = originalDims.height;
+                }
+
+                // Calculate the scale needed to fit the rotated dimensions within the thumbnail container
+                const scaleX = thumbWidth / effectiveWidth;
+                const scaleY = thumbHeight / effectiveHeight;
+                const renderScale = Math.min(scaleX, scaleY);
+                
+                // Apply these calculated dimensions to the canvas *itself* to maintain aspect ratio within the rotated container
+                const canvas = canvasContainer.querySelector('canvas');
+                canvas.style.width = `${effectiveWidth * renderScale}px`;
+                canvas.style.height = `${effectiveHeight * renderScale}px`;
+
+                // Adjust the thumbnail's height to accommodate the rotated canvas
+                // This is crucial for dynamic sizing of the parent thumbnail container
+                // Calculate the maximum dimension of the rotated canvas for setting the parent's height
+                const maxCanvasDimension = Math.max(effectiveWidth * renderScale, effectiveHeight * renderScale);
+                // Set the thumbnail height to be slightly larger than the max canvas dimension
+                // Plus space for page number and controls
+                thumb.style.height = `${maxCanvasDimension + 40}px`; 
+            }
+
+            ui.rotate.execBtn.addEventListener('click', async () => {
+                if (!state.rotate.file || Object.keys(state.rotate.rotations).length === 0) { alert('請先上傳 PDF 並旋轉至少一個頁面！'); return; }
+                showLoader('正在旋轉頁面...');
+                try {
+                    const pdfDoc = await PDFDocument.load(state.rotate.originalBuffer);
+                    Object.keys(state.rotate.rotations).forEach(pageNumStr => {
+                        const pageNum = parseInt(pageNumStr);
+                        const page = pdfDoc.getPage(pageNum - 1);
+                        // Apply the absolute rotation stored in state.rotate.rotations
+                        // Note: degrees() handles modulo 360 internally for PDF-lib
+                        page.setRotation(degrees(state.rotate.rotations[pageNum]));
+                    });
+                    const bytes = await pdfDoc.save();
+                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), `${state.rotate.file.name.replace(/\.pdf$/i, '')}_rotated.pdf`);
+                } catch (err) { console.error(err); alert('旋轉頁面時發生錯誤。'); } 
+                finally { hideLoader(); clearWorkspace('rotate'); }
+            });
+
+            // ---- Image Module ----
+            ui.image.input.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                if (files.length > 0) {
+                    state.image.files = files;
+                    ui.image.uploadArea.style.display = 'none';
+                    ui.image.workspace.style.display = 'block';
+                    createFileInfoElement(`${files.length} 個圖片檔案`, 'image');
+                    renderImagePreviews(files);
+                }
+            });
+            function renderImagePreviews(files) {
+                ui.image.preview.innerHTML = '';
+                files.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const thumb = document.createElement('div');
+                        thumb.className = 'page-thumbnail';
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        // For images, we just directly scale the image within the container
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.display = 'block';
+                        const canvasContainer = document.createElement('div');
+                        canvasContainer.className = 'canvas-container'; // Reuse canvas-container for styling consistency
+                        canvasContainer.appendChild(img);
+                        thumb.appendChild(canvasContainer);
+
+                        const num = document.createElement('div');
+                        num.className = 'page-number';
+                        num.textContent = `第 ${index + 1} 頁`;
+                        thumb.appendChild(num);
+                        ui.image.preview.appendChild(thumb);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            ui.image.execBtn.addEventListener('click', async () => {
+                if (state.image.files.length === 0) { alert('請先上傳圖片！'); return; }
+                showLoader('正在轉換為 PDF...');
+                try {
+                    const pdfDoc = await PDFDocument.create();
+                    for (const file of state.image.files) {
+                        const buffer = await file.arrayBuffer();
+                        let image;
+                        if (file.type === 'image/png') image = await pdfDoc.embedPng(buffer);
+                        else if (file.type === 'image/jpeg') image = await pdfDoc.embedJpg(buffer);
+                        else {
+                            console.warn(`不支援的圖片格式: ${file.name}`);
+                            continue; // 跳過不支援的格式
+                        }
+                        // Use original image dimensions for the PDF page
+                        const page = pdfDoc.addPage([image.width, image.height]);
+                        page.drawImage(image, {x:0, y:0, width: image.width, height: image.height});
+                    }
+                    const bytes = await pdfDoc.save();
+                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), 'images_converted.pdf');
+                } catch (err) { console.error(err); alert('圖片轉 PDF 時發生錯誤。'); } 
+                finally { hideLoader(); clearWorkspace('image'); }
+            });
+
+            // ---- Drag and Drop for Upload ----
+            ['merge', 'delete', 'rotate', 'image'].forEach(module => {
+                const area = ui[module].uploadArea;
+                area.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); area.firstElementChild.style.borderColor = '#0078d4'; });
+                area.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); area.firstElementChild.style.borderColor = '#b0b0b0'; });
+                area.addEventListener('drop', (e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    area.firstElementChild.style.borderColor = '#b0b0b0';
+                    ui[module].input.files = e.dataTransfer.files;
+                    ui[module].input.dispatchEvent(new Event('change'));
+                });
+            });
+        });
+    </script>
+</body>
+</html>
