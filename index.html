@@ -156,8 +156,7 @@
     <div class="main-container">
         <h1>PDF Junior</h1>
 		<h4>code with Gemini</h4>
-		<p class="subtitle">⚠️本專案無法處理加密檔案。</p>
-        <p class="subtitle">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
+        	<p class="subtitle">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
 		
         <fluent-tabs>
             <fluent-tab id="tab-merge">合併檔案</fluent-tab>
@@ -311,28 +310,42 @@
             async function renderMergePreviews(files) {
                 state.merge.files = files;
                 ui.merge.preview.innerHTML = '';
-                showLoader('正在載入文件預覽...');
+                showLoader('正在載入並檢查文件...');
                 state.merge.buffers = {};
-                const promises = files.map(async (file) => {
-                    const buffer = await file.arrayBuffer();
-                    state.merge.buffers[file.name] = buffer;
-                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-                    const page = await pdf.getPage(1);
-                    const viewport = page.getViewport({ scale: 0.3 });
-                    const canvas = document.createElement('canvas');
-                    canvas.height = viewport.height; canvas.width = viewport.width;
-                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                    return { file, canvas };
-                });
+
                 try {
-                    const results = await Promise.all(promises);
-                    results.forEach(({ file, canvas }, index) => {
-                        ui.merge.preview.appendChild(createDocumentPreviewItem(file, canvas, index, results.length));
-                    });
-                } catch (err) {
-                    console.error("預覽載入失敗:", err);
-                    alert("預覽載入失敗，檔案可能已損毀或格式不正確。");
-                } finally { hideLoader(); }
+                    for (const file of files) {
+                        try {
+                            const buffer = await file.arrayBuffer();
+                            state.merge.buffers[file.name] = buffer;
+                            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+                            const page = await pdf.getPage(1);
+                            const viewport = page.getViewport({ scale: 0.3 });
+                            const canvas = document.createElement('canvas');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+                            // 檔案有效，建立預覽項
+                            const total = files.length;
+                            const index = state.merge.files.findIndex(f => f.name === file.name);
+                            ui.merge.preview.appendChild(createDocumentPreviewItem(file, canvas, index, total));
+
+                        } catch (err) {
+                            console.error(`處理檔案 "${file.name}" 時發生錯誤:`, err);
+                            if (err.name === 'PasswordException') {
+                                alert(`檔案錯誤： "${file.name}"\n\n此檔案受到密碼保護，無法處理。`);
+                            } else {
+                                alert(`檔案錯誤： "${file.name}"\n\n此檔案可能已損毀或格式不正確，無法讀取。`);
+                            }
+                            // 清理工作區並中止後續操作
+                            clearWorkspace('merge');
+                            return; // 直接退出函式
+                        }
+                    }
+                } finally {
+                    hideLoader();
+                }
             }
             
             function createDocumentPreviewItem(file, canvas, index, total) {
@@ -413,24 +426,26 @@
             async function renderSinglePdfPreviews(file, module) {
                 const previewArea = ui[module].preview;
                 previewArea.innerHTML = '';
-                showLoader('正在載入 PDF 預覽...');
+                showLoader('正在載入並檢查 PDF...');
+
                 try {
                     const buffer = await file.arrayBuffer();
+                    // 使用 Uint8Array 傳遞 data，這是 pdf.js 建議的做法
+                    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+
+                    // 既然檔案可讀，才將 buffer 存入 state
                     state[module].originalBuffer = buffer;
-                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
 
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 1 }); // Use scale 1 to get original dimensions
-                        
-                        // Store original dimensions
-						state[module].originalPageDimensions[i] = { width: viewport.width, height: viewport.height };
+                        const viewport = page.getViewport({ scale: 1 });
+
+                        state[module].originalPageDimensions[i] = { width: viewport.width, height: viewport.height };
 
                         const canvas = document.createElement('canvas');
                         const canvasContext = canvas.getContext('2d');
                         
-                        // Render at a high resolution and then scale down with CSS for better quality
-                        const renderScale = 1.5; // Render at 1.5x for better clarity
+                        const renderScale = 1.5;
                         const renderViewport = page.getViewport({ scale: renderScale });
                         canvas.width = renderViewport.width;
                         canvas.height = renderViewport.height;
@@ -438,7 +453,7 @@
 
                         const thumb = document.createElement('div');
                         thumb.className = 'page-thumbnail';
-                        thumb.dataset.pageNum = i; // Store page number
+                        thumb.dataset.pageNum = i;
 
                         const canvasContainer = document.createElement('div');
                         canvasContainer.className = 'canvas-container';
@@ -472,16 +487,25 @@
                             controls.appendChild(leftBtn); controls.appendChild(rightBtn);
                             thumb.appendChild(controls);
 
-                            // Initialize rotation if any
                             if (state.rotate.rotations[i] === undefined) {
-                                state.rotate.rotations[i] = 0; // Initialize to 0 if not set
+                                state.rotate.rotations[i] = 0;
                             }
-                            // Apply initial rotation if necessary
                             applyRotation(thumb, canvasContainer, i, 0); 
                         }
                         previewArea.appendChild(thumb);
                     }
-                } catch (err) { console.error(err); alert("載入 PDF 預覽失敗。"); } finally { hideLoader(); }
+                } catch (err) {
+                    console.error(err);
+                    if (err.name === 'PasswordException') {
+                        alert('檔案無法讀取：此 PDF 受到密碼保護。');
+                    } else {
+                        alert('檔案無法讀取：此 PDF 可能已損毀或格式不正確。');
+                    }
+                    // 出錯時清理工作區
+                    clearWorkspace(module);
+                } finally {
+                    hideLoader();
+                }
             }
 
             // ---- Delete Module ----
@@ -675,4 +699,5 @@
         });
     </script>
 </body>
+
 </html>
