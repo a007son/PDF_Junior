@@ -661,27 +661,47 @@
                 });
             }
             ui.image.execBtn.addEventListener('click', async () => {
-                if (state.image.files.length === 0) { alert('請先上傳圖片！'); return; }
+                if (state.image.files.length === 0) {
+                    alert('請先上傳圖片！');
+                    return;
+                }
+
+                // 檢查所有檔案格式是否支援
+                const supportedTypes = ['image/jpeg', 'image/png'];
+                for (const file of state.image.files) {
+                    if (!supportedTypes.includes(file.type)) {
+                        const extension = file.name.split('.').pop().toUpperCase();
+                        alert(`不支援 ${extension} 格式轉換。\n僅支援 JPG 與 PNG 圖片。`);
+                        return; // 中止執行
+                    }
+                }
+
                 showLoader('正在轉換為 PDF...');
                 try {
                     const pdfDoc = await PDFDocument.create();
                     for (const file of state.image.files) {
                         const buffer = await file.arrayBuffer();
                         let image;
-                        if (file.type === 'image/png') image = await pdfDoc.embedPng(buffer);
-                        else if (file.type === 'image/jpeg') image = await pdfDoc.embedJpg(buffer);
-                        else {
-                            console.warn(`不支援的圖片格式: ${file.name}`);
-                            continue; // 跳過不支援的格式
+                        // 此處不再需要 else 判斷，因為前面已經驗證過格式
+                        if (file.type === 'image/png') {
+                            image = await pdfDoc.embedPng(buffer);
+                        } else { // 必定是 image/jpeg
+                            image = await pdfDoc.embedJpg(buffer);
                         }
-                        // Use original image dimensions for the PDF page
+                        
+                        // 使用原始圖片尺寸作為 PDF 頁面尺寸
                         const page = pdfDoc.addPage([image.width, image.height]);
                         page.drawImage(image, {x:0, y:0, width: image.width, height: image.height});
                     }
                     const bytes = await pdfDoc.save();
                     downloadFile(new Blob([bytes], { type: 'application/pdf' }), 'images_converted.pdf');
-                } catch (err) { console.error(err); alert('圖片轉 PDF 時發生錯誤。'); } 
-                finally { hideLoader(); clearWorkspace('image'); }
+                } catch (err) {
+                    console.error(err);
+                    alert('圖片轉 PDF 時發生錯誤。');
+                } finally {
+                    hideLoader();
+                    clearWorkspace('image');
+                }
             });
 
             // ---- Drag and Drop for Upload ----
@@ -701,3 +721,4 @@
 </body>
 
 </html>
+
