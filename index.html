@@ -625,6 +625,16 @@
             ui.image.input.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files);
                 if (files.length > 0) {
+                    const unsupportedFiles = files.filter(file => file.type !== 'image/png' && file.type !== 'image/jpeg');
+                    
+                    if (unsupportedFiles.length > 0) {
+                        const unsupportedNames = unsupportedFiles.map(file => ` - ${file.name}`).join('\n');
+                        alert(`僅支援 JPG 與 PNG 圖片轉換，無法轉換以下檔案：\n${unsupportedNames}`);
+                        // 清空輸入，避免錯誤檔案被處理
+                        e.target.value = '';
+                        return;
+                    }
+
                     state.image.files = files;
                     ui.image.uploadArea.style.display = 'none';
                     ui.image.workspace.style.display = 'block';
@@ -632,6 +642,7 @@
                     renderImagePreviews(files);
                 }
             });
+			
             function renderImagePreviews(files) {
                 ui.image.preview.innerHTML = '';
                 files.forEach((file, index) => {
