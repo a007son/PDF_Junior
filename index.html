@@ -351,7 +351,9 @@
             function createDocumentPreviewItem(file, canvas, index, total) {
                 const item = document.createElement('div');
                 item.className = 'document-preview-item';
-                item.dataset.index = index; item.draggable = true;
+                item.dataset.index = index;
+                item.dataset.fileName = file.name; // 新增：使用檔名作為唯一識別碼
+                item.draggable = true;
                 const nameSpan = document.createElement('div');
                 nameSpan.className = 'file-name';
                 nameSpan.textContent = truncateFilename(file.name);
@@ -379,11 +381,55 @@
                 return item;
             }
 
+			function updateMergePreviewDOM() {
+                const previewArea = ui.merge.preview;
+                const fragment = document.createDocumentFragment();
+
+                // 1. 根據 state 的順序，將 DOM 元素按序放入 fragment
+                state.merge.files.forEach(file => {
+                    // 使用 encodeURI 來處理檔名中可能存在的特殊字元，讓選擇器更穩健
+                    const el = previewArea.querySelector(`.document-preview-item[data-file-name="${encodeURI(file.name)}"]`);
+                    if(el) fragment.appendChild(el);
+                });
+
+                // 2. 一次性將排好序的元素加回 previewArea
+                previewArea.appendChild(fragment);
+
+                // 3. 更新所有元素的 index 和按鈕狀態/事件
+                const items = previewArea.children;
+                Array.from(items).forEach((item, newIndex) => {
+                    item.dataset.index = newIndex;
+                    
+                    // 為了清晰，明確地找到左右按鈕
+                    const oldButtons = item.querySelectorAll('fluent-button');
+                    const oldLeftBtn = oldButtons[0];
+                    const oldRightBtn = oldButtons[1];
+
+                    // --- 修正左按鈕 ---
+                    const newLeftBtn = oldLeftBtn.cloneNode(true);
+                    // 【修正核心】先設定好新按鈕的 disabled 狀態
+                    newLeftBtn.disabled = (newIndex === 0);
+                    // 再進行替換與事件綁定
+                    oldLeftBtn.parentNode.replaceChild(newLeftBtn, oldLeftBtn);
+                    newLeftBtn.addEventListener('click', () => moveFile(newIndex, newIndex - 1));
+
+                    // --- 修正右按鈕 ---
+                    const newRightBtn = oldRightBtn.cloneNode(true);
+                    // 【修正核心】先設定好新按鈕的 disabled 狀態
+                    newRightBtn.disabled = (newIndex === items.length - 1);
+                     // 再進行替換與事件綁定
+                    oldRightBtn.parentNode.replaceChild(newRightBtn, oldRightBtn);
+                    newRightBtn.addEventListener('click', () => moveFile(newIndex, newIndex + 1));
+                });
+            }
+
             function moveFile(from, to) {
                 if (to < 0 || to >= state.merge.files.length) return;
+                // 更新 state 陣列
                 const [item] = state.merge.files.splice(from, 1);
                 state.merge.files.splice(to, 0, item);
-                renderMergePreviews(state.merge.files);
+                // 更新 DOM (不再重繪！)
+                updateMergePreviewDOM();
             }
 
             ui.merge.preview.addEventListener('dragover', e => {
@@ -396,13 +442,22 @@
                 }, { offset: Number.NEGATIVE_INFINITY }).element;
                 if (afterElement == null) { ui.merge.preview.appendChild(dragging); } else { ui.merge.preview.insertBefore(dragging, afterElement); }
             });
+			
             ui.merge.preview.addEventListener('drop', e => {
                 e.preventDefault();
                 const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
                 const draggingDOM = ui.merge.preview.querySelector('.dragging');
                 if(draggingDOM) {
+                    // drop 事件發生時，DOM 的順序已經被 dragover 改變了
+                    // 我們直接從 DOM 的新順序來計算 toIndex
                     const toIndex = Array.from(ui.merge.preview.children).indexOf(draggingDOM);
-                    moveFile(fromIndex, toIndex);
+                    
+                    // 更新 state 陣列
+                    const [item] = state.merge.files.splice(fromIndex, 1);
+                    state.merge.files.splice(toIndex, 0, item);
+
+                    // 更新整個 DOM 的 index 和按鈕狀態
+                    updateMergePreviewDOM();
                 }
             });
 
@@ -712,3 +767,4 @@
 </body>
 
 </html>
+
