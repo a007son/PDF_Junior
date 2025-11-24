@@ -1,770 +1,933 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" class="spectrum spectrum--light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Junior</title>
-	<!-- PDF-lib -->
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-	<!-- PDF.js -->
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
-	<script>
-    // ✅ 正確設定 workerSrc
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js";
-	</script>
-	<!-- Fluent UI -->
-	<script type="module" src="https://cdn.jsdelivr.net/npm/@fluentui/web-components/dist/web-components.min.js"></script>
     
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- 1. PDF.js (v3.11.174) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    
+    <!-- 2. PDF-Lib -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <!-- Material Icons (用於模擬圖示，Spectrum 風格化) -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
-
         :root {
-            --neutral-foreground-rest: #1f1f1f;
-            --neutral-background-fill-rest: rgba(248, 248, 248, 0.8);
-            --neutral-stroke-default-rest: #e0e0e0;
-            --shadow-depth-4: 0 2px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.1);
-            --shadow-depth-8: 0 4px 8px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.12);
-            --border-radius-medium: 6px;
-            --border-radius-large: 8px;
+            /* Spectrum Color Palette Simulation */
+            --spectrum-global-color-gray-50: #f5f5f5;
+            --spectrum-global-color-gray-100: #eaeaea;
+            --spectrum-global-color-gray-200: #e1e1e1;
+            --spectrum-global-color-gray-300: #d5d5d5;
+            --spectrum-global-color-gray-400: #b6b6b6;
+            --spectrum-global-color-gray-500: #909090;
+            --spectrum-global-color-gray-600: #6e6e6e; /* Added for darker gray text */
+            --spectrum-global-color-gray-800: #464646;
+            --spectrum-global-color-gray-900: #2c2c2c;
+
+            --spectrum-global-color-blue-400: #2680eb;
+            --spectrum-global-color-blue-500: #1473e6; /* Adobe Blue */
+            --spectrum-global-color-blue-600: #0d66d0;
+            
+            --spectrum-global-color-red-400: #ec5b62;
+            --spectrum-global-color-red-500: #d7373f;
+            
+            --spectrum-alias-background-color-default: #ffffff;
+            --spectrum-alias-text-color: var(--spectrum-global-color-gray-900);
+            
+            --border-radius-medium: 4px;
+            --border-radius-large: 16px;
+            
+            --font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
-            font-family: 'Noto Sans TC', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f0f2f5;
-            color: var(--neutral-foreground-rest);
+            font-family: var(--font-family);
+            background-color: var(--spectrum-global-color-gray-50);
+            color: var(--spectrum-alias-text-color);
             margin: 0;
-            padding: 20px;
-        }
-
-        .main-container {
-            max-width: 1000px;
-            margin: 20px auto;
-            background-color: var(--neutral-background-fill-rest);
-            backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid var(--neutral-stroke-default-rest);
-            border-radius: var(--border-radius-large);
-            padding: 20px 30px;
-            box-shadow: var(--shadow-depth-8);
-        }
-
-        h1 { font-weight: 500; text-align: center; }
-		h4 { font-weight: 500; text-align: center; }
-        .subtitle { text-align: center; color: #606060; }
-        fluent-tabs::part(tablist) { border-bottom: 1px solid var(--neutral-stroke-default-rest); }
-        .tab-panel { padding: 20px 0; }
-
-        .file-upload-container {
-            border: 2px dashed #b0b0b0;
-            border-radius: var(--border-radius-medium);
-            padding: 40px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease-in-out;
-            background-color: rgba(255, 255, 255, 0.5);
-        }
-        .file-upload-container:hover { border-color: var(--accent-fill-rest, #0078d4); background-color: rgba(255, 255, 255, 0.8); }
-        .file-upload-container .material-icons { font-size: 48px; color: #606060; }
-
-        .file-info-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background-color: #e9f3fc; border-radius: var(--border-radius-medium); margin-top: 20px; font-weight: 500; }
-        .workspace { display:none; }
-        .workspace p { margin: 16px 0 8px 0; color: #424242; }
-
-        .file-preview-container {
-            display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; padding: 16px;
-            background-color: rgba(255, 255, 255, 0.6); border-radius: var(--border-radius-medium);
-            border: 1px solid #e0e0e0; min-height: 150px; align-content: flex-start;
-        }
-
-        .page-thumbnail, .document-preview-item {
-            background-color: #fff; border-radius: var(--border-radius-medium);
-            box-shadow: var(--shadow-depth-4); transition: box-shadow 0.2s ease-in-out;
-            border: 1px solid transparent;
-        }
-        .page-thumbnail:hover, .document-preview-item:hover { box-shadow: var(--shadow-depth-8); }
-        
-        .page-thumbnail {
-            width: 250px; /* Base width */
-            height: 300px !important; /* Removed fixed height, will be dynamic */
-            padding: 16px 6px 6px 6px;
-            text-align: center;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            overflow: hidden; /* Ensure content doesn't spill out */
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
-            position: relative; /* For dynamic height adjustment */
-            min-height: 150px; /* Minimum height for empty state or small thumbs */
+            min-height: 100vh;
         }
 
-        .page-thumbnail .canvas-container {
-            width: 100%;
-            flex-grow: 1;
+        /* --- Spectrum Header --- */
+        .spectrum-header {
+            background: var(--spectrum-alias-background-color-default);
+            border-bottom: 1px solid var(--spectrum-global-color-gray-200);
+            padding: 0 24px;
+            height: 60px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            overflow: hidden;
-            position: relative; /* For canvas absolute positioning */
-            /* Add transition for rotation on the container */
-            transition: transform 0.2s ease-in-out;
-            transform-origin: center center;
-            box-sizing: border-box; /* Ensure padding and border are included */
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        .page-thumbnail canvas {
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            color: var(--spectrum-global-color-gray-900);
+        }
+        
+        /* 模擬 Adobe Logo 方塊 */
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            background-color: var(--spectrum-global-color-red-500);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 4px;
+        }
+
+        /* --- Spectrum Tabs --- */
+        .spectrum-tabs {
+            display: flex;
+            gap: 24px;
+            margin-left: 40px;
+            height: 100%;
+        }
+
+        .tab-item {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--spectrum-global-color-gray-500);
+            position: relative;
+            transition: color 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-item:hover { color: var(--spectrum-global-color-gray-800); }
+        
+        .tab-item.selected {
+            color: var(--spectrum-global-color-gray-900);
+            border-bottom: 2px solid var(--spectrum-global-color-blue-500);
+        }
+
+        /* --- Main Content --- */
+        .main-container {
+            max-width: 1200px;
+            margin: 32px auto;
+            width: 90%;
+            flex: 1;
+        }
+
+        .panel { display: none; animation: fadeIn 0.3s ease; }
+        .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Upload Zone (Spectrum Dropzone) --- */
+        .dropzone {
+            border: 2px dashed var(--spectrum-global-color-gray-300);
+            border-radius: var(--border-radius-medium);
+            background-color: var(--spectrum-alias-background-color-default);
+            padding: 48px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+        }
+
+        .dropzone:hover {
+            border-color: var(--spectrum-global-color-blue-400);
+            background-color: #f8fbff;
+        }
+
+        .dropzone-icon {
+            font-size: 48px;
+            color: var(--spectrum-global-color-gray-400);
+            margin-bottom: 16px;
+            transition: color 0.2s;
+        }
+        
+        .dropzone:hover .dropzone-icon {
+            color: var(--spectrum-global-color-blue-400);			 
+        }
+        
+        .dropzone h3 { margin: 0 0 8px 0; font-size: 18px; color: var(--spectrum-global-color-gray-800); }
+        .dropzone p { margin: 0; font-size: 14px; color: var(--spectrum-global-color-gray-500); }
+
+        /* --- Workspace & Toolbar --- */
+        .toolbar {
+            background-color: var(--spectrum-alias-background-color-default);
+            padding: 12px 20px;
+            border-radius: var(--border-radius-medium);
+            border: 1px solid var(--spectrum-global-color-gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        }
+        
+        .file-status {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--spectrum-global-color-gray-800);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- Spectrum Buttons --- */
+        .spectrum-btn {
+            background-color: transparent;
+            border: 1px solid var(--spectrum-global-color-gray-400);
+            color: var(--spectrum-global-color-gray-800);
+            padding: 6px 16px;
+            border-radius: 16px; /* Pill shape standard in some Spectrum contexts */
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            outline: none;
+        }
+
+        .spectrum-btn:hover {
+            background-color: var(--spectrum-global-color-gray-100);
+            border-color: var(--spectrum-global-color-gray-800);
+        }
+
+        .spectrum-btn:active { background-color: var(--spectrum-global-color-gray-200); }
+
+        .spectrum-btn.primary {
+            background-color: var(--spectrum-global-color-blue-500);
+            border-color: var(--spectrum-global-color-blue-500);
+            color: white;
+        }
+
+        .spectrum-btn.primary:hover {
+            background-color: var(--spectrum-global-color-blue-600);
+            border-color: var(--spectrum-global-color-blue-600);
+        }
+
+        .spectrum-btn.quiet {
+            border: none;
+            background: transparent;
+            color: var(--spectrum-global-color-gray-600);
+        }
+        .spectrum-btn.quiet:hover { color: var(--spectrum-global-color-gray-900); background: rgba(0,0,0,0.05); }
+
+        .spectrum-btn.icon-only { padding: 6px; border-radius: 50%; width: 32px; height: 32px; justify-content: center; }
+
+        /* --- Grid & Cards --- */
+        .grid-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .spectrum-card {
+            background: var(--spectrum-alias-background-color-default);
+            border: 1px solid var(--spectrum-global-color-gray-200);
+            border-radius: var(--border-radius-medium);
+            overflow: hidden;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .spectrum-card:hover {
+            border-color: var(--spectrum-global-color-blue-400);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        
+        .spectrum-card.dragging { opacity: 0.5; border: 2px dashed var(--spectrum-global-color-gray-400); background: #f9f9f9; }
+        
+        /* Drop indicators */
+        .spectrum-card.insert-before { border-left: 4px solid var(--spectrum-global-color-blue-500); }
+        .spectrum-card.insert-after { border-right: 4px solid var(--spectrum-global-color-blue-500); }
+
+        /* --- 修正點：加大預覽區域與減少內距 --- */
+        .card-preview {
+            height: 220px;
+            background-color: var(--spectrum-global-color-gray-50);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 8px; /* 減少內距 */
+            position: relative;
+        }
+        
+        /* --- 修正點：讓 Canvas 盡量佔滿 --- */
+        .card-preview canvas, .card-preview img {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: transform 0.3s cubic-bezier(0.45, 0, 0.55, 1);
             max-width: 100%;
             max-height: 100%;
-            border-radius: 4px;
-            border: 1px solid #eee;
-            /* transition: transform 0.2s ease-in-out; /* Remove transform from canvas */
-            object-fit: contain; /* Ensure the canvas fits within its container while maintaining aspect ratio */
-            display: block; /* Remove extra space below canvas */
+            object-fit: contain;
         }
 
-        /* Adjust canvas container based on rotation */
-        .page-thumbnail[data-rotation="90"] .canvas-container,
-        .page-thumbnail[data-rotation="270"] .canvas-container {
-            /* When rotated 90/270 degrees, swap width and height */
-            /* This is a visual adjustment. The canvas itself should still be rendered correctly. */
-            /* The actual canvas dimensions will be controlled by JS for accurate aspect ratio */
+        .card-footer {
+            padding: 12px;
+            border-top: 1px solid var(--spectrum-global-color-gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: white;
         }
 
-        .page-thumbnail.selected-for-deletion { border-color: #d13438; box-shadow: 0 0 0 2px #d13438; }
-        .page-number { font-size: 12px; color: #666; margin-top: 5px; }
-        .rotation-controls { margin-top: 8px; display: flex; justify-content: space-evenly; }
+        .card-title {
+            font-size: 12px;
+            color: var(--spectrum-global-color-gray-800);
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100px;
+        }
 
-        .document-preview-item { width: 180px; padding: 8px; display: flex; flex-direction: column; align-items: center; }
-        .document-preview-item .file-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; word-break: break-all; color: #333; width: 100%; text-align: center; height: 40px; overflow: hidden; }
-        .document-preview-item canvas { border-radius: 4px; border: 1px solid #eee; }
-        .document-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 10px; }
-        .drag-handle { cursor: move; color: #757575; }
-        .document-preview-item.dragging { opacity: 0.5; }
+        /* Delete Selection State */
+        .spectrum-card.selected {
+            border: 2px solid var(--spectrum-global-color-red-500);
+        }
+        .spectrum-card.selected .card-preview::after {
+            content: 'delete';
+            font-family: 'Material Icons Outlined';
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: var(--spectrum-global-color-red-500);
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            padding: 12px;
+        }
 
-        .action-button-container { text-align: center; margin-top: 24px; }
+        /* --- Footer Action Bar --- */
+        .action-bar {
+            text-align: right;
+            padding-top: 24px;
+            border-top: 1px solid var(--spectrum-global-color-gray-200);
+        }
+
+        /* --- Footer (New) --- */
+        .spectrum-footer {
+            background-color: var(--spectrum-alias-background-color-default);
+            border-top: 1px solid var(--spectrum-global-color-gray-200);
+            padding: 24px;
+            text-align: center;
+            margin-top: auto; /* Stick to bottom if content is short */
+        }
         
-        .loader-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(5px);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 1000;
+        .footer-text {
+            color: var(--spectrum-global-color-gray-600);
+            font-size: 13px;
+            margin: 0;
+            line-height: 1.6;
         }
-        .loader-overlay p { margin-top: 16px; font-size: 1.1em; }
+        
+        .footer-credit {
+            color: var(--spectrum-global-color-gray-500);
+            font-size: 11px;
+            margin-top: 8px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- Loaders & Notifications --- */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            display: none; justify-content: center; align-items: center; flex-direction: column;
+        }
+        
+        .spectrum-loader {
+            width: 32px; height: 32px;
+            border: 3px solid var(--spectrum-global-color-gray-300);
+            border-top-color: var(--spectrum-global-color-blue-500);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #323232; color: white;
+            padding: 12px 24px; border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            font-size: 14px; opacity: 0; transition: all 0.3s;
+            z-index: 2000; display: flex; align-items: center; gap: 8px;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.success { border-left: 4px solid #2D9D78; }
+        .toast.error { border-left: 4px solid #D7373F; }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        .material-icons-outlined { font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <div class="main-container">
-        <h1>PDF Junior</h1>
-		<h4>code with Gemini</h4>
-        	<p class="subtitle">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
-		
-        <fluent-tabs>
-            <fluent-tab id="tab-merge">合併檔案</fluent-tab>
-            <fluent-tab id="tab-delete">刪除頁面</fluent-tab>
-            <fluent-tab id="tab-rotate">旋轉頁面</fluent-tab>
-            <fluent-tab id="tab-image">圖片轉 PDF</fluent-tab>
+    <!-- Header -->
+    <header class="spectrum-header">
+        <div class="brand">
+            <div class="brand-icon">P</div>
+            <span>PDF Junior</span>
+        </div>
+        <nav class="spectrum-tabs">
+            <div class="tab-item selected" onclick="app.switchTab('merge')" data-target="merge">合併檔案</div>
+            <div class="tab-item" onclick="app.switchTab('delete')" data-target="delete">刪除頁面</div>
+            <div class="tab-item" onclick="app.switchTab('rotate')" data-target="rotate">旋轉頁面</div>
+            <div class="tab-item" onclick="app.switchTab('image')" data-target="image">圖片轉 PDF</div>
+        </nav>
+        <div>
+            <!-- Placeholder for User/Settings if needed -->
+        </div>
+    </header>
 
-            <fluent-tab-panel id="panel-merge" class="tab-panel">
-                <div id="merge-upload-area">
-                    <div class="file-upload-container" onclick="document.getElementById('merge-pdf-upload').click();">
-					<span class="material-icons">add_to_photos</span>
-					<p>點擊此處或拖曳多個 PDF 檔案至此</p>
-					</div>
-                    <input type="file" id="merge-pdf-upload" accept=".pdf" multiple style="display:none;">
+    <!-- Main Content -->
+    <main class="main-container">
+        
+        <!-- 1. MERGE -->
+        <div id="panel-merge" class="panel active">
+            <div id="upload-merge" class="dropzone">
+                <span class="material-icons-outlined dropzone-icon">library_add</span>
+                <h3>合併多個 PDF</h3>
+                <p>將檔案拖曳至此，或點擊上傳</p>
+                <input type="file" id="input-merge" accept=".pdf" multiple hidden>
+            </div>
+            
+            <div id="work-merge" class="hidden">
+                <div class="toolbar">
+                    <div class="file-status">
+                        <span class="material-icons-outlined">description</span>
+                        <span id="info-merge">已載入檔案</span>
+                    </div>
+                    <button class="spectrum-btn" onclick="app.reset('merge')">重新開始</button>
                 </div>
-                <div id="merge-workspace" class="workspace">
-                    <div class="file-info-bar" id="merge-file-info"></div>
-                    <p>預覽文件集，可透過按鈕或直接拖曳調整合併順序。</p>
-                    <div class="file-preview-container" id="merge-preview-area"></div>
-                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-merge">執行並儲存</fluent-button></div>
+                <div id="grid-merge" class="grid-view"></div>
+                <div class="action-bar">
+                    <button class="spectrum-btn primary" onclick="app.merge.execute()">合併並下載</button>
                 </div>
-            </fluent-tab-panel>
-            <fluent-tab-panel id="panel-delete" class="tab-panel">
-                 <div id="delete-upload-area">
-                    <div class="file-upload-container" onclick="document.getElementById('delete-pdf-upload').click();"><span class="material-icons">playlist_remove</span><p>點擊此處或拖曳 PDF 檔案至此</p></div>
-                    <input type="file" id="delete-pdf-upload" accept=".pdf" style="display:none;">
+            </div>
+        </div>
+
+        <!-- 2. DELETE -->
+        <div id="panel-delete" class="panel">
+            <div id="upload-delete" class="dropzone">
+                <span class="material-icons-outlined dropzone-icon">delete_sweep</span>
+                <h3>刪除 PDF 頁面</h3>
+                <p>上傳檔案後點選要移除的頁面</p>
+                <input type="file" id="input-delete" accept=".pdf" hidden>
+            </div>
+            
+            <div id="work-delete" class="hidden">
+                <div class="toolbar">
+                    <div class="file-status">
+                        <span class="material-icons-outlined">description</span>
+                        <span id="info-delete">Filename.pdf</span>
+                    </div>
+                    <button class="spectrum-btn" onclick="app.reset('delete')">關閉檔案</button>
                 </div>
-                <div id="delete-workspace" class="workspace">
-                    <div class="file-info-bar" id="delete-file-info"></div>
-                    <p>點擊下方的頁面縮圖以選取您想刪除的頁面。</p>
-                    <div class="file-preview-container" id="delete-preview-area"></div>
-                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-delete">執行並儲存</fluent-button></div>
+                <p style="text-align:center; color:var(--spectrum-global-color-gray-500); margin-bottom:20px; font-size:14px;">
+                    點擊卡片以標記為 <span style="color:var(--spectrum-global-color-red-500); font-weight:bold;">刪除</span>
+                </p>
+                <div id="grid-delete" class="grid-view"></div>
+                <div class="action-bar">
+                    <button class="spectrum-btn primary" onclick="app.delete.execute()">刪除選取頁面</button>
                 </div>
-            </fluent-tab-panel>
-            <fluent-tab-panel id="panel-rotate" class="tab-panel">
-                <div id="rotate-upload-area">
-                    <div class="file-upload-container" onclick="document.getElementById('rotate-pdf-upload').click();"><span class="material-icons">rotate_90_degrees_ccw</span><p>點擊此處或拖曳 PDF 檔案至此</p></div>
-                    <input type="file" id="rotate-pdf-upload" accept=".pdf" style="display:none;">
+            </div>
+        </div>
+
+        <!-- 3. ROTATE -->
+        <div id="panel-rotate" class="panel">
+            <div id="upload-rotate" class="dropzone">
+                <span class="material-icons-outlined dropzone-icon">rotate_right</span>
+                <h3>旋轉 PDF 頁面</h3>
+                <p>調整個別頁面方向</p>
+                <input type="file" id="input-rotate" accept=".pdf" hidden>
+            </div>
+            
+            <div id="work-rotate" class="hidden">
+                <div class="toolbar">
+                    <div class="file-status">
+                        <span class="material-icons-outlined">description</span>
+                        <span id="info-rotate">Filename.pdf</span>
+                    </div>
+                    <button class="spectrum-btn" onclick="app.reset('rotate')">關閉檔案</button>
                 </div>
-                <div id="rotate-workspace" class="workspace">
-                    <div class="file-info-bar" id="rotate-file-info"></div>
-                    <p>點擊縮圖下方的按鈕以旋轉特定頁面。</p>
-                    <div class="file-preview-container" id="rotate-preview-area"></div>
-                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-rotate">執行並儲存</fluent-button></div>
+                <div id="grid-rotate" class="grid-view"></div>
+                <div class="action-bar">
+                    <button class="spectrum-btn primary" onclick="app.rotate.execute()">儲存旋轉結果</button>
                 </div>
-            </fluent-tab-panel>
-            <fluent-tab-panel id="panel-image" class="tab-panel">
-                <div id="image-upload-area">
-                     <div class="file-upload-container" onclick="document.getElementById('image-upload').click();"><span class="material-icons">add_photo_alternate</span><p>點擊此處或拖曳圖片檔案至此</p></div>
-                    <input type="file" id="image-upload" accept="image/*" multiple style="display:none;">
+            </div>
+        </div>
+
+        <!-- 4. IMAGE -->
+        <div id="panel-image" class="panel">
+            <div id="upload-image" class="dropzone">
+                <span class="material-icons-outlined dropzone-icon">image</span>
+                <h3>圖片轉 PDF</h3>
+                <p>支援 JPG 與 PNG 格式</p>
+                <input type="file" id="input-image" accept="image/png, image/jpeg" multiple hidden>
+            </div>
+            
+            <div id="work-image" class="hidden">
+                <div class="toolbar">
+                    <div class="file-status">
+                        <span class="material-icons-outlined">collections</span>
+                        <span id="info-image">已載入圖片</span>
+                    </div>
+                    <button class="spectrum-btn" onclick="app.reset('image')">重新開始</button>
                 </div>
-                <div id="image-workspace" class="workspace">
-                    <div class="file-info-bar" id="image-file-info"></div>
-                    <p>預覽您上傳的圖片，將依此順序轉換為單一 PDF。</p>
-                    <div class="file-preview-container" id="image-preview-area"></div>
-                    <div class="action-button-container"><fluent-button appearance="accent" id="execute-image-to-pdf">執行並儲存</fluent-button></div>
+                <div id="grid-image" class="grid-view"></div>
+                <div class="action-bar">
+                    <button class="spectrum-btn primary" onclick="app.image.execute()">轉換為 PDF</button>
                 </div>
-            </fluent-tab-panel>
-        </fluent-tabs>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="spectrum-footer">
+        <p class="footer-text">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
+        <p class="footer-credit">code with Gemini 3 PRO</p>
+    </footer>
+    <!-- Overlay & Toast -->
+    <div id="loader" class="overlay">
+        <div class="spectrum-loader"></div>
+        <p style="margin-top:16px; font-weight:600; color:var(--spectrum-global-color-gray-800);">處理中...</p>
     </div>
+    <div id="toast" class="toast"></div>
 
-    <div id="loader-overlay" class="loader-overlay">
-        <fluent-progress-ring></fluent-progress-ring>
-        <p id="loader-text">處理中...</p>
-    </div>
+<script>
+    // Worker Setup
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const { PDFDocument, degrees } = PDFLib;
 
-    <script type="module">
-        const { PDFDocument, degrees } = PDFLib;
-        window.addEventListener('DOMContentLoaded', () => {
-            const state = {
-                merge: { files: [], buffers: {} },
-                delete: { file: null, pagesToDelete: new Set(), originalBuffer: null, originalPageDimensions: {} },
-                rotate: { file: null, rotations: {}, originalBuffer: null, originalPageDimensions: {} },
-                image: { files: [] }
-            };
+    const app = {
+        state: {
+            merge: { items: [] },
+            delete: { file: null, buffer: null, pages: [] },
+            rotate: { file: null, buffer: null, pages: [] },
+            image: { files: [] }
+        },
 
-            const loaderOverlay = document.getElementById('loader-overlay');
-            const loaderText = document.getElementById('loader-text');
+        // --- Core UI Logic ---
+        switchTab: (mod) => {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('selected'));
+            document.querySelector(`.tab-item[data-target="${mod}"]`).classList.add('selected');
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`panel-${mod}`).classList.add('active');
+        },
 
-            const ui = {
-                merge: { uploadArea: document.getElementById('merge-upload-area'), workspace: document.getElementById('merge-workspace'), input: document.getElementById('merge-pdf-upload'), info: document.getElementById('merge-file-info'), preview: document.getElementById('merge-preview-area'), execBtn: document.getElementById('execute-merge') },
-                delete: { uploadArea: document.getElementById('delete-upload-area'), workspace: document.getElementById('delete-workspace'), input: document.getElementById('delete-pdf-upload'), info: document.getElementById('delete-file-info'), preview: document.getElementById('delete-preview-area'), execBtn: document.getElementById('execute-delete') },
-                rotate: { uploadArea: document.getElementById('rotate-upload-area'), workspace: document.getElementById('rotate-workspace'), input: document.getElementById('rotate-pdf-upload'), info: document.getElementById('rotate-file-info'), preview: document.getElementById('rotate-preview-area'), execBtn: document.getElementById('execute-rotate') },
-                image: { uploadArea: document.getElementById('image-upload-area'), workspace: document.getElementById('image-workspace'), input: document.getElementById('image-upload'), info: document.getElementById('image-file-info'), preview: document.getElementById('image-preview-area'), execBtn: document.getElementById('execute-image-to-pdf') }
-            };
-            
-            function showLoader(text = '處理中...') { loaderText.textContent = text; loaderOverlay.style.display = 'flex'; }
-            function hideLoader() { loaderOverlay.style.display = 'none'; }
-            
-			function clearWorkspace(module) {
-				const currentUI = ui[module]; if (!currentUI) return;
-				state[module] = { 
-					files: [], 
-					buffers: {}, 
-					pagesToDelete: new Set(), 
-					rotations: {}, 
-					file: null, 
-					originalBuffer: null, 
-					originalPageDimensions: {} // 確保這一行存在且正確
-					};
-				currentUI.preview.innerHTML = '';
-				currentUI.uploadArea.style.display = 'block';
-				currentUI.workspace.style.display = 'none';
-				currentUI.input.value = '';
-				}
+        reset: (mod) => {
+            app.state[mod] = (mod === 'merge' || mod === 'image') ? { items: [], files: [] } : { file: null, buffer: null, pages: [] };
+            document.getElementById(`upload-${mod}`).classList.remove('hidden');
+            document.getElementById(`work-${mod}`).classList.add('hidden');
+            document.getElementById(`input-${mod}`).value = '';
+            document.getElementById(`grid-${mod}`).innerHTML = '';
+        },
 
-            function createFileInfoElement(fileName, module) {
-                const infoBar = ui[module].info;
-                infoBar.innerHTML = '';
-                const textSpan = document.createElement('span');
-                textSpan.textContent = fileName;
-                infoBar.appendChild(textSpan);
-                const closeButton = document.createElement('fluent-button');
-                closeButton.setAttribute('appearance', 'stealth');
-                closeButton.innerHTML = `<span class="material-icons" style="font-size: 16px;">close</span>`;
-                closeButton.addEventListener('click', () => clearWorkspace(module));
-                infoBar.appendChild(closeButton);
-            }
+        ui: {
+            loader: (show) => document.getElementById('loader').style.display = show ? 'flex' : 'none',
+            toast: (msg, type='success') => {
+                const t = document.getElementById('toast');
+                t.innerHTML = `<span class="material-icons-outlined">${type === 'success' ? 'check_circle' : 'error'}</span> ${msg}`;
+                t.className = `toast show ${type}`;
+                setTimeout(() => t.classList.remove('show'), 3000);
+            },
+            truncate: (str) => str.length > 15 ? str.substring(0,8) + '...' + str.substring(str.length-5) : str
+        },
 
-            function downloadFile(blob, filename) {
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click();
-                document.body.removeChild(a); URL.revokeObjectURL(url);
-            }
-
-            function truncateFilename(name, maxLength = 25) {
-                if (name.length <= maxLength) return name;
-                const extIndex = name.lastIndexOf('.');
-                const extension = extIndex !== -1 ? name.substring(extIndex) : '';
-                const nameWithoutExt = extIndex !== -1 ? name.substring(0, extIndex) : name;
-                const charsToShow = maxLength - extension.length - 3;
-                if (charsToShow < 4) return name.substring(0, maxLength - 3) + '...';
-                const frontChars = Math.ceil(charsToShow / 2);
-                const backChars = Math.floor(charsToShow / 2);
-                return nameWithoutExt.substring(0, frontChars) + '...' + nameWithoutExt.substring(nameWithoutExt.length - backChars) + extension;
-            }
-
-            // ---- Merge Module ----
-            ui.merge.input.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files).filter(f => f.type === 'application/pdf');
-                if (files.length > 0) {
-                    ui.merge.uploadArea.style.display = 'none';
-                    ui.merge.workspace.style.display = 'block';
-                    createFileInfoElement(`${files.length} 個 PDF 檔案`, 'merge');
-                    renderMergePreviews(files);
-                }
-            });
-
-            async function renderMergePreviews(files) {
-                state.merge.files = files;
-                ui.merge.preview.innerHTML = '';
-                showLoader('正在載入並檢查文件...');
-                state.merge.buffers = {};
-
-                try {
-                    for (const file of files) {
-                        try {
-                            const buffer = await file.arrayBuffer();
-                            state.merge.buffers[file.name] = buffer;
-                            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-                            const page = await pdf.getPage(1);
-                            const viewport = page.getViewport({ scale: 0.3 });
-                            const canvas = document.createElement('canvas');
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
-                            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-                            // 檔案有效，建立預覽項
-                            const total = files.length;
-                            const index = state.merge.files.findIndex(f => f.name === file.name);
-                            ui.merge.preview.appendChild(createDocumentPreviewItem(file, canvas, index, total));
-
-                        } catch (err) {
-                            console.error(`處理檔案 "${file.name}" 時發生錯誤:`, err);
-                            if (err.name === 'PasswordException') {
-                                alert(`檔案錯誤： "${file.name}"\n\n此檔案受到密碼保護，無法處理。`);
-                            } else {
-                                alert(`檔案錯誤： "${file.name}"\n\n此檔案可能已損毀或格式不正確，無法讀取。`);
-                            }
-                            // 清理工作區並中止後續操作
-                            clearWorkspace('merge');
-                            return; // 直接退出函式
-                        }
-                    }
-                } finally {
-                    hideLoader();
-                }
-            }
-            
-            function createDocumentPreviewItem(file, canvas, index, total) {
-                const item = document.createElement('div');
-                item.className = 'document-preview-item';
-                item.dataset.index = index;
-                item.dataset.fileName = file.name; // 新增：使用檔名作為唯一識別碼
-                item.draggable = true;
-                const nameSpan = document.createElement('div');
-                nameSpan.className = 'file-name';
-                nameSpan.textContent = truncateFilename(file.name);
-                nameSpan.title = file.name;
-                item.appendChild(nameSpan); item.appendChild(canvas);
-                const controls = document.createElement('div');
-                controls.className = 'document-controls';
-                const leftBtn = document.createElement('fluent-button');
-                leftBtn.setAttribute('appearance', 'stealth');
-                leftBtn.innerHTML = `<span class="material-icons">arrow_back</span>`;
-                if (index === 0) leftBtn.disabled = true;
-                leftBtn.addEventListener('click', () => moveFile(index, index - 1));
-                const dragIcon = document.createElement('span');
-                dragIcon.className = 'material-icons drag-handle';
-                dragIcon.textContent = 'drag_indicator';
-                const rightBtn = document.createElement('fluent-button');
-                rightBtn.setAttribute('appearance', 'stealth');
-                rightBtn.innerHTML = `<span class="material-icons">arrow_forward</span>`;
-                if (index === total - 1) rightBtn.disabled = true;
-                rightBtn.addEventListener('click', () => moveFile(index, index + 1));
-                controls.appendChild(leftBtn); controls.appendChild(dragIcon); controls.appendChild(rightBtn);
-                item.appendChild(controls);
-                item.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', index); setTimeout(() => item.classList.add('dragging'), 0); });
-                item.addEventListener('dragend', () => item.classList.remove('dragging'));
-                return item;
-            }
-
-			function updateMergePreviewDOM() {
-                const previewArea = ui.merge.preview;
-                const fragment = document.createDocumentFragment();
-
-                // 1. 根據 state 的順序，將 DOM 元素按序放入 fragment
-                state.merge.files.forEach(file => {
-                    // 使用 encodeURI 來處理檔名中可能存在的特殊字元，讓選擇器更穩健
-                    const el = previewArea.querySelector(`.document-preview-item[data-file-name="${encodeURI(file.name)}"]`);
-                    if(el) fragment.appendChild(el);
-                });
-
-                // 2. 一次性將排好序的元素加回 previewArea
-                previewArea.appendChild(fragment);
-
-                // 3. 更新所有元素的 index 和按鈕狀態/事件
-                const items = previewArea.children;
-                Array.from(items).forEach((item, newIndex) => {
-                    item.dataset.index = newIndex;
-                    
-                    // 為了清晰，明確地找到左右按鈕
-                    const oldButtons = item.querySelectorAll('fluent-button');
-                    const oldLeftBtn = oldButtons[0];
-                    const oldRightBtn = oldButtons[1];
-
-                    // --- 修正左按鈕 ---
-                    const newLeftBtn = oldLeftBtn.cloneNode(true);
-                    // 【修正核心】先設定好新按鈕的 disabled 狀態
-                    newLeftBtn.disabled = (newIndex === 0);
-                    // 再進行替換與事件綁定
-                    oldLeftBtn.parentNode.replaceChild(newLeftBtn, oldLeftBtn);
-                    newLeftBtn.addEventListener('click', () => moveFile(newIndex, newIndex - 1));
-
-                    // --- 修正右按鈕 ---
-                    const newRightBtn = oldRightBtn.cloneNode(true);
-                    // 【修正核心】先設定好新按鈕的 disabled 狀態
-                    newRightBtn.disabled = (newIndex === items.length - 1);
-                     // 再進行替換與事件綁定
-                    oldRightBtn.parentNode.replaceChild(newRightBtn, oldRightBtn);
-                    newRightBtn.addEventListener('click', () => moveFile(newIndex, newIndex + 1));
-                });
-            }
-
-            function moveFile(from, to) {
-                if (to < 0 || to >= state.merge.files.length) return;
-                // 更新 state 陣列
-                const [item] = state.merge.files.splice(from, 1);
-                state.merge.files.splice(to, 0, item);
-                // 更新 DOM (不再重繪！)
-                updateMergePreviewDOM();
-            }
-
-            ui.merge.preview.addEventListener('dragover', e => {
-                e.preventDefault();
-                const dragging = document.querySelector('.dragging'); if(!dragging) return;
-                const afterElement = [...ui.merge.preview.querySelectorAll('.document-preview-item:not(.dragging)')].reduce((closest, child) => {
-                    const box = child.getBoundingClientRect();
-                    const offset = e.clientY - box.top - box.height / 2;
-                    return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
-                }, { offset: Number.NEGATIVE_INFINITY }).element;
-                if (afterElement == null) { ui.merge.preview.appendChild(dragging); } else { ui.merge.preview.insertBefore(dragging, afterElement); }
-            });
-			
-            ui.merge.preview.addEventListener('drop', e => {
-                e.preventDefault();
-                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-                const draggingDOM = ui.merge.preview.querySelector('.dragging');
-                if(draggingDOM) {
-                    // drop 事件發生時，DOM 的順序已經被 dragover 改變了
-                    // 我們直接從 DOM 的新順序來計算 toIndex
-                    const toIndex = Array.from(ui.merge.preview.children).indexOf(draggingDOM);
-                    
-                    // 更新 state 陣列
-                    const [item] = state.merge.files.splice(fromIndex, 1);
-                    state.merge.files.splice(toIndex, 0, item);
-
-                    // 更新整個 DOM 的 index 和按鈕狀態
-                    updateMergePreviewDOM();
-                }
-            });
-
-            ui.merge.execBtn.addEventListener('click', async () => {
-                if (state.merge.files.length < 2) { alert('請上傳至少兩個 PDF 檔案進行合併！'); return; }
-                showLoader('正在合併檔案...');
-                try {
-                    const mergedPdf = await PDFDocument.create();
-                    for (const file of state.merge.files) {
-                        const donorPdf = await PDFDocument.load(state.merge.buffers[file.name]);
-                        const pages = await mergedPdf.copyPages(donorPdf, donorPdf.getPageIndices());
-                        pages.forEach(p => mergedPdf.addPage(p));
-                    }
-                    const bytes = await mergedPdf.save();
-                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), 'merged_document.pdf');
-                } catch (err) { console.error(err); alert("合併檔案時發生錯誤。"); } 
-                finally { hideLoader(); clearWorkspace('merge'); }
-            });
-
-            // ---- Delete & Rotate Common Renderer ----
-            async function renderSinglePdfPreviews(file, module) {
-                const previewArea = ui[module].preview;
-                previewArea.innerHTML = '';
-                showLoader('正在載入並檢查 PDF...');
-
-                try {
-                    const buffer = await file.arrayBuffer();
-                    // 使用 Uint8Array 傳遞 data，這是 pdf.js 建議的做法
-                    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
-
-                    // 既然檔案可讀，才將 buffer 存入 state
-                    state[module].originalBuffer = buffer;
-
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const viewport = page.getViewport({ scale: 1 });
-
-                        state[module].originalPageDimensions[i] = { width: viewport.width, height: viewport.height };
-
-                        const canvas = document.createElement('canvas');
-                        const canvasContext = canvas.getContext('2d');
-                        
-                        const renderScale = 1.5;
-                        const renderViewport = page.getViewport({ scale: renderScale });
-                        canvas.width = renderViewport.width;
-                        canvas.height = renderViewport.height;
-                        await page.render({ canvasContext, viewport: renderViewport }).promise;
-
-                        const thumb = document.createElement('div');
-                        thumb.className = 'page-thumbnail';
-                        thumb.dataset.pageNum = i;
-
-                        const canvasContainer = document.createElement('div');
-                        canvasContainer.className = 'canvas-container';
-                        canvasContainer.appendChild(canvas);
-                        thumb.appendChild(canvasContainer);
-                        
-                        const num = document.createElement('div');
-                        num.className = 'page-number';
-                        num.textContent = `第 ${i} 頁`;
-                        thumb.appendChild(num);
-
-                        if (module === 'delete') {
-                            thumb.addEventListener('click', () => {
-                                thumb.classList.toggle('selected-for-deletion');
-                                if (state.delete.pagesToDelete.has(i)) state.delete.pagesToDelete.delete(i);
-                                else state.delete.pagesToDelete.add(i);
-                            });
-                        } else if (module === 'rotate') {
-                            const controls = document.createElement('div');
-                            controls.className = 'rotation-controls';
-                            const leftBtn = document.createElement('fluent-button');
-                            leftBtn.setAttribute('appearance', 'stealth');
-                            leftBtn.innerHTML = `<span class="material-icons">rotate_left</span>`;
-                            leftBtn.addEventListener('click', (e) => { e.stopPropagation(); applyRotation(thumb, canvasContainer, i, -90); });
-                            
-                            const rightBtn = document.createElement('fluent-button');
-                            rightBtn.setAttribute('appearance', 'stealth');
-                            rightBtn.innerHTML = `<span class="material-icons">rotate_right</span>`;
-                            rightBtn.addEventListener('click', (e) => { e.stopPropagation(); applyRotation(thumb, canvasContainer, i, 90); });
-                            
-                            controls.appendChild(leftBtn); controls.appendChild(rightBtn);
-                            thumb.appendChild(controls);
-
-                            if (state.rotate.rotations[i] === undefined) {
-                                state.rotate.rotations[i] = 0;
-                            }
-                            applyRotation(thumb, canvasContainer, i, 0); 
-                        }
-                        previewArea.appendChild(thumb);
-                    }
-                } catch (err) {
-                    console.error(err);
-                    if (err.name === 'PasswordException') {
-                        alert('檔案無法讀取：此 PDF 受到密碼保護。');
-                    } else {
-                        alert('檔案無法讀取：此 PDF 可能已損毀或格式不正確。');
-                    }
-                    // 出錯時清理工作區
-                    clearWorkspace(module);
-                } finally {
-                    hideLoader();
-                }
-            }
-
-            // ---- Delete Module ----
-            ui.delete.input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    state.delete.file = file;
-                    ui.delete.uploadArea.style.display = 'none';
-                    ui.delete.workspace.style.display = 'block';
-                    createFileInfoElement(file.name, 'delete');
-                    renderSinglePdfPreviews(file, 'delete');
-                }
-            });
-            ui.delete.execBtn.addEventListener('click', async () => {
-                if (!state.delete.file || state.delete.pagesToDelete.size === 0) { alert('請先上傳 PDF 並選取要刪除的頁面！'); return; }
-                showLoader('正在刪除頁面...');
-                try {
-                    const pdfDoc = await PDFDocument.load(state.delete.originalBuffer);
-                    const pagesToKeep = Array.from({ length: pdfDoc.getPageCount() }, (_, i) => i).filter(i => !state.delete.pagesToDelete.has(i + 1));
-                    const newDoc = await PDFDocument.create();
-                    if (pagesToKeep.length > 0) {
-                        const copiedPages = await newDoc.copyPages(pdfDoc, pagesToKeep);
-                        copiedPages.forEach(p => newDoc.addPage(p));
-                    }
-                    const bytes = await newDoc.save();
-                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), `${state.delete.file.name.replace(/\.pdf$/i, '')}_deleted.pdf`);
-                } catch (err) { console.error(err); alert('刪除頁面時發生錯誤。'); } 
-                finally { hideLoader(); clearWorkspace('delete'); }
-            });
-
-            // ---- Rotate Module ----
-            ui.rotate.input.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    state.rotate.file = file;
-                    state.rotate.rotations = {}; // Reset rotations for new file
-                    state.rotate.originalPageDimensions = {}; // Reset original dimensions for new file
-                    ui.rotate.uploadArea.style.display = 'none';
-                    ui.rotate.workspace.style.display = 'block';
-                    createFileInfoElement(file.name, 'rotate');
-                    renderSinglePdfPreviews(file, 'rotate');
-                }
-            });
-
-            function applyRotation(thumb, canvasContainer, pageNum, angleChange) {
-                // Get current rotation, default to 0 if not set
-                let currentRotation = state.rotate.rotations[pageNum] || 0;
-                // Add the angle change
-                const newRotation = currentRotation + angleChange;
-                // Store the new absolute rotation
-                state.rotate.rotations[pageNum] = newRotation;
-
-                // Update the CSS transform using the absolute rotation value
-                canvasContainer.style.transform = `rotate(${newRotation}deg)`;
-                thumb.dataset.rotation = (newRotation % 360 + 360) % 360; // Store 0-359 for CSS based on actual visual rotation
-
-                const originalDims = state.rotate.originalPageDimensions[pageNum];
-                if (!originalDims) {
-                    console.warn(`Original dimensions for page ${pageNum} not found.`);
-                    return;
-                }
-
-                const thumbWidth = 225 - 12; // Base width minus padding
-                const thumbHeight = 300 - 40; // Base height minus padding and controls space (approx)
-
-                let effectiveWidth, effectiveHeight;
-                // Determine the effective orientation based on the current absolute rotation
-                // Note: The `transform` doesn't change element's perceived width/height in flow
-                // We need to calculate how much space the rotated image *would* occupy
-                const angleMod90 = Math.abs(newRotation % 180); // 0 or 90
-                if (angleMod90 === 90) { // If rotated to portrait from landscape or vice versa
-                    effectiveWidth = originalDims.height;
-                    effectiveHeight = originalDims.width;
-                } else { // 0, 180, 360...
-                    effectiveWidth = originalDims.width;
-                    effectiveHeight = originalDims.height;
-                }
-
-                // Calculate the scale needed to fit the rotated dimensions within the thumbnail container
-                const scaleX = thumbWidth / effectiveWidth;
-                const scaleY = thumbHeight / effectiveHeight;
-                const renderScale = Math.min(scaleX, scaleY);
+        // --- 1. Merge Module ---
+        merge: {
+            init: () => {
+                const zone = document.getElementById('upload-merge');
+                const input = document.getElementById('input-merge');
+                zone.onclick = () => input.click();
+                app.setupDrag(zone, input);
+                input.onchange = (e) => app.merge.process(Array.from(e.target.files));
                 
-                // Apply these calculated dimensions to the canvas *itself* to maintain aspect ratio within the rotated container
-                const canvas = canvasContainer.querySelector('canvas');
-                canvas.style.width = `${effectiveWidth * renderScale}px`;
-                canvas.style.height = `${effectiveHeight * renderScale}px`;
-
-                // Adjust the thumbnail's height to accommodate the rotated canvas
-                // This is crucial for dynamic sizing of the parent thumbnail container
-                // Calculate the maximum dimension of the rotated canvas for setting the parent's height
-                const maxCanvasDimension = Math.max(effectiveWidth * renderScale, effectiveHeight * renderScale);
-                // Set the thumbnail height to be slightly larger than the max canvas dimension
-                // Plus space for page number and controls
-                thumb.style.height = `${maxCanvasDimension + 40}px`; 
-            }
-
-            ui.rotate.execBtn.addEventListener('click', async () => {
-                if (!state.rotate.file || Object.keys(state.rotate.rotations).length === 0) { alert('請先上傳 PDF 並旋轉至少一個頁面！'); return; }
-                showLoader('正在旋轉頁面...');
+                // Grid Drag logic
+                const grid = document.getElementById('grid-merge');
+                grid.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+                grid.ondrop = (e) => { e.preventDefault(); document.querySelectorAll('.spectrum-card').forEach(c => c.classList.remove('insert-before', 'insert-after')); };
+            },
+            process: async (files) => {
+                files = files.filter(f => f.type === 'application/pdf');
+                if(!files.length) return;
+                app.ui.loader(true);
                 try {
-                    const pdfDoc = await PDFDocument.load(state.rotate.originalBuffer);
-                    Object.keys(state.rotate.rotations).forEach(pageNumStr => {
-                        const pageNum = parseInt(pageNumStr);
-                        const page = pdfDoc.getPage(pageNum - 1);
-                        // Apply the absolute rotation stored in state.rotate.rotations
-                        // Note: degrees() handles modulo 360 internally for PDF-lib
-                        page.setRotation(degrees(state.rotate.rotations[pageNum]));
-                    });
-                    const bytes = await pdfDoc.save();
-                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), `${state.rotate.file.name.replace(/\.pdf$/i, '')}_rotated.pdf`);
-                } catch (err) { console.error(err); alert('旋轉頁面時發生錯誤。'); } 
-                finally { hideLoader(); clearWorkspace('rotate'); }
-            });
-
-            // ---- Image Module ----
-            ui.image.input.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                if (files.length > 0) {
-                    const unsupportedFiles = files.filter(file => file.type !== 'image/png' && file.type !== 'image/jpeg');
+                    const newItems = await Promise.all(files.map(async (file) => {
+                        const buffer = await file.arrayBuffer();
+                        const pdf = await pdfjsLib.getDocument(buffer).promise;
+                        const page = await pdf.getPage(1);
+                        // --- 修正點：提高渲染比例，讓大圖更清晰 (0.5 -> 0.8) ---
+                        const viewport = page.getViewport({scale: 0.8}); 
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        app.fitCanvas(canvas, viewport.width, viewport.height, 0);
+                        await page.render({canvasContext: canvas.getContext('2d'), viewport}).promise;
+                        return { file, buffer, thumb: canvas };
+                    }));
+                    app.state.merge.items = [...app.state.merge.items, ...newItems];
+                    app.merge.render();
+                    document.getElementById('upload-merge').classList.add('hidden');
+                    document.getElementById('work-merge').classList.remove('hidden');
+                    document.getElementById('info-merge').textContent = `${app.state.merge.items.length} 份文件`;
+                } catch(e) { console.error(e); app.ui.toast('讀取失敗', 'error'); } 
+                finally { app.ui.loader(false); }
+            },
+            render: () => {
+                const grid = document.getElementById('grid-merge');
+                grid.innerHTML = '';
+                app.state.merge.items.forEach((item, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'spectrum-card';
+                    card.draggable = true;
                     
-                    if (unsupportedFiles.length > 0) {
-                        const unsupportedNames = unsupportedFiles.map(file => ` - ${file.name}`).join('\n');
-                        alert(`僅支援 JPG 與 PNG 圖片轉換，無法轉換以下檔案：\n${unsupportedNames}`);
-                        // 清空輸入，避免錯誤檔案被處理
-                        e.target.value = '';
-                        return;
-                    }
+                    // Drag Events
+                    card.ondragstart = (e) => { e.dataTransfer.setData('idx', idx); setTimeout(() => card.classList.add('dragging'),0); };
+                    card.ondragend = () => { card.classList.remove('dragging'); document.querySelectorAll('.spectrum-card').forEach(c=>c.classList.remove('insert-before','insert-after')); };
+                    card.ondragover = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        const rect = card.getBoundingClientRect();
+                        const mid = rect.left + rect.width/2;
+                        if(e.clientX < mid) { card.classList.add('insert-before'); card.classList.remove('insert-after'); }
+                        else { card.classList.add('insert-after'); card.classList.remove('insert-before'); }
+                    };
+                    card.ondragleave = () => card.classList.remove('insert-before','insert-after');
+                    card.ondrop = (e) => {
+                        e.preventDefault(); e.stopPropagation();
+                        card.classList.remove('insert-before','insert-after');
+                        const from = parseInt(e.dataTransfer.getData('idx'));
+                        if(isNaN(from) || from === idx) return;
+                        let to = idx;
+                        const rect = card.getBoundingClientRect();
+                        if(e.clientX >= rect.left + rect.width/2) to = idx + 1;
+                        if(from < to) to--;
+                        
+                        const moved = app.state.merge.items.splice(from, 1)[0];
+                        app.state.merge.items.splice(to, 0, moved);
+                        app.merge.render();
+                    };
 
-                    state.image.files = files;
-                    ui.image.uploadArea.style.display = 'none';
-                    ui.image.workspace.style.display = 'block';
-                    createFileInfoElement(`${files.length} 個圖片檔案`, 'image');
-                    renderImagePreviews(files);
-                }
-            });
-			
-            function renderImagePreviews(files) {
-                ui.image.preview.innerHTML = '';
-                files.forEach((file, index) => {
+                    const prev = document.createElement('div');
+                    prev.className = 'card-preview';
+                    prev.appendChild(item.thumb);
+                    
+                    const footer = document.createElement('div');
+                    footer.className = 'card-footer';
+                    footer.innerHTML = `
+                        <div class="card-title" title="${item.file.name}">${app.ui.truncate(item.file.name)}</div>
+                        <div style="display:flex; gap:4px;">
+                            <button class="spectrum-btn icon-only quiet" onclick="app.merge.remove(${idx})"><span class="material-icons-outlined">close</span></button>
+                        </div>
+                    `;
+                    
+                    card.append(prev, footer);
+                    grid.appendChild(card);
+                });
+            },
+            remove: (idx) => {
+                app.state.merge.items.splice(idx, 1);
+                app.merge.render();
+                document.getElementById('info-merge').textContent = `${app.state.merge.items.length} 份文件`;
+                if(app.state.merge.items.length === 0) app.reset('merge');
+            },
+            execute: async () => {
+                if(app.state.merge.items.length < 2) return app.ui.toast('請至少合併兩個檔案', 'error');
+                app.ui.loader(true);
+                try {
+                    const doc = await PDFDocument.create();
+                    for(let item of app.state.merge.items) {
+                        const src = await PDFDocument.load(item.buffer);
+                        const copied = await doc.copyPages(src, src.getPageIndices());
+                        copied.forEach(p => doc.addPage(p));
+                    }
+                    app.download(await doc.save(), 'merged_spectrum.pdf');
+                    app.ui.toast('合併成功！');
+                } catch(e) { app.ui.toast('合併失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            }
+        },
+
+        // --- 2. Delete Module ---
+        delete: {
+            init: () => {
+                const zone = document.getElementById('upload-delete');
+                const input = document.getElementById('input-delete');
+                zone.onclick = () => input.click();
+                app.setupDrag(zone, input);
+                input.onchange = (e) => app.delete.process(e.target.files[0]);
+            },
+            process: async (file) => {
+                if(!file || file.type !== 'application/pdf') return;
+                app.ui.loader(true);
+                try {
+                    app.state.delete.file = file;
+                    app.state.delete.buffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument(app.state.delete.buffer).promise;
+                    app.state.delete.pages = [];
+                    for(let i=1; i<=pdf.numPages; i++){
+                        const page = await pdf.getPage(i);
+                        // --- 修正點：提高渲染比例 (0.4 -> 0.8) ---
+                        const viewport = page.getViewport({scale:0.8});
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        app.fitCanvas(canvas, viewport.width, viewport.height, 0);
+                        await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
+                        app.state.delete.pages.push({num:i, thumb:canvas, selected:false});
+                    }
+                    document.getElementById('upload-delete').classList.add('hidden');
+                    document.getElementById('work-delete').classList.remove('hidden');
+                    document.getElementById('info-delete').textContent = file.name;
+                    app.delete.render();
+                } catch(e) { console.error(e); app.ui.toast('讀取失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            },
+            render: () => {
+                const grid = document.getElementById('grid-delete');
+                grid.innerHTML = '';
+                app.state.delete.pages.forEach(p => {
+                    const card = document.createElement('div');
+                    card.className = `spectrum-card ${p.selected ? 'selected' : ''}`;
+                    card.onclick = () => { p.selected = !p.selected; app.delete.render(); };
+                    card.style.cursor = 'pointer';
+                    
+                    const prev = document.createElement('div');
+                    prev.className = 'card-preview';
+                    prev.appendChild(p.thumb);
+                    
+                    const footer = document.createElement('div');
+                    footer.className = 'card-footer';
+                    footer.innerHTML = `<div class="card-title" style="width:100%; text-align:center;">Page ${p.num}</div>`;
+                    
+                    card.append(prev, footer);
+                    grid.appendChild(card);
+                });
+            },
+            execute: async () => {
+                const keep = app.state.delete.pages.filter(p => !p.selected).map(p => p.num - 1);
+                if(keep.length === app.state.delete.pages.length) return app.ui.toast('請選擇要刪除的頁面', 'error');
+                app.ui.loader(true);
+                try {
+                    const src = await PDFDocument.load(app.state.delete.buffer);
+                    const doc = await PDFDocument.create();
+                    const copied = await doc.copyPages(src, keep);
+                    copied.forEach(p => doc.addPage(p));
+                    app.download(await doc.save(), 'edited_spectrum.pdf');
+                    app.ui.toast('刪除成功');
+                } catch(e) { app.ui.toast('儲存失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            }
+        },
+
+        // --- 3. Rotate Module ---
+        rotate: {
+            init: () => {
+                const zone = document.getElementById('upload-rotate');
+                const input = document.getElementById('input-rotate');
+                zone.onclick = () => input.click();
+                app.setupDrag(zone, input);
+                input.onchange = (e) => app.rotate.process(e.target.files[0]);
+            },
+            process: async (file) => {
+                if(!file || file.type !== 'application/pdf') return;
+                app.ui.loader(true);
+                try {
+                    app.state.rotate.file = file;
+                    app.state.rotate.buffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument(app.state.rotate.buffer).promise;
+                    app.state.rotate.pages = [];
+                    for(let i=1; i<=pdf.numPages; i++){
+                        const page = await pdf.getPage(i);
+                        // --- 修正點：提高渲染比例 (0.4 -> 0.8) ---
+                        const viewport = page.getViewport({scale:0.8});
+                        const canvas = document.createElement('canvas');
+                        canvas.width = viewport.width; canvas.height = viewport.height;
+                        app.fitCanvas(canvas, viewport.width, viewport.height, 0);
+                        await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
+                        app.state.rotate.pages.push({num:i, rotation:0, thumb:canvas, w:viewport.width, h:viewport.height});
+                    }
+                    document.getElementById('upload-rotate').classList.add('hidden');
+                    document.getElementById('work-rotate').classList.remove('hidden');
+                    document.getElementById('info-rotate').textContent = file.name;
+                    app.rotate.render();
+                } catch(e) { app.ui.toast('讀取失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            },
+            render: () => {
+                const grid = document.getElementById('grid-rotate');
+                grid.innerHTML = '';
+                app.state.rotate.pages.forEach((p, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'spectrum-card';
+                    
+                    const prev = document.createElement('div');
+                    prev.className = 'card-preview';
+                    prev.appendChild(p.thumb);
+                    app.fitCanvas(p.thumb, p.w, p.h, p.rotation);
+                    
+                    const footer = document.createElement('div');
+                    footer.className = 'card-footer';
+                    footer.innerHTML = `
+                        <button class="spectrum-btn icon-only quiet" onclick="app.rotate.turn(${idx}, -90)"><span class="material-icons-outlined">rotate_left</span></button>
+                        <span style="font-size:12px; font-weight:600;">${p.num}</span>
+                        <button class="spectrum-btn icon-only quiet" onclick="app.rotate.turn(${idx}, 90)"><span class="material-icons-outlined">rotate_right</span></button>
+                    `;
+                    card.append(prev, footer);
+                    grid.appendChild(card);
+                });
+            },
+            turn: (idx, deg) => {
+                const p = app.state.rotate.pages[idx];
+                p.rotation += deg;
+                app.fitCanvas(p.thumb, p.w, p.h, p.rotation);
+            },
+            execute: async () => {
+                app.ui.loader(true);
+                try {
+                    const src = await PDFDocument.load(app.state.rotate.buffer);
+                    const pages = src.getPages();
+                    app.state.rotate.pages.forEach((p, i) => {
+                        const current = pages[i].getRotation().angle;
+                        let final = (current + p.rotation) % 360;
+                        if(final < 0) final += 360;
+                        pages[i].setRotation(degrees(final));
+                    });
+                    app.download(await src.save(), 'rotated_spectrum.pdf');
+                    app.ui.toast('儲存成功');
+                } catch(e) { app.ui.toast('儲存失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            }
+        },
+
+        // --- 4. Image Module ---
+        image: {
+            init: () => {
+                const zone = document.getElementById('upload-image');
+                const input = document.getElementById('input-image');
+                zone.onclick = () => input.click();
+                app.setupDrag(zone, input);
+                input.onchange = (e) => app.image.process(Array.from(e.target.files));
+            },
+            process: (files) => {
+                if(!files.length) return;
+                app.state.image.files = files;
+                const grid = document.getElementById('grid-image');
+                grid.innerHTML = '';
+                files.forEach((f, i) => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        const thumb = document.createElement('div');
-                        thumb.className = 'page-thumbnail';
+                        const card = document.createElement('div');
+                        card.className = 'spectrum-card';
+                        const prev = document.createElement('div');
+                        prev.className = 'card-preview';
                         const img = document.createElement('img');
                         img.src = e.target.result;
-                        // For images, we just directly scale the image within the container
-                        img.style.maxWidth = '100%';
-                        img.style.maxHeight = '100%';
-                        img.style.objectFit = 'contain';
-                        img.style.display = 'block';
-                        const canvasContainer = document.createElement('div');
-                        canvasContainer.className = 'canvas-container'; // Reuse canvas-container for styling consistency
-                        canvasContainer.appendChild(img);
-                        thumb.appendChild(canvasContainer);
-
-                        const num = document.createElement('div');
-                        num.className = 'page-number';
-                        num.textContent = `第 ${index + 1} 頁`;
-                        thumb.appendChild(num);
-                        ui.image.preview.appendChild(thumb);
-                    };
-                    reader.readAsDataURL(file);
-                });
-            }
-            ui.image.execBtn.addEventListener('click', async () => {
-                if (state.image.files.length === 0) { alert('請先上傳圖片！'); return; }
-                showLoader('正在轉換為 PDF...');
-                try {
-                    const pdfDoc = await PDFDocument.create();
-                    for (const file of state.image.files) {
-                        const buffer = await file.arrayBuffer();
-                        let image;
-                        if (file.type === 'image/png') image = await pdfDoc.embedPng(buffer);
-                        else if (file.type === 'image/jpeg') image = await pdfDoc.embedJpg(buffer);
-                        else {
-                            console.warn(`不支援的圖片格式: ${file.name}`);
-                            continue; // 跳過不支援的格式
-                        }
-                        // Use original image dimensions for the PDF page
-                        const page = pdfDoc.addPage([image.width, image.height]);
-                        page.drawImage(image, {x:0, y:0, width: image.width, height: image.height});
+                        prev.appendChild(img);
+                        const footer = document.createElement('div');
+                        footer.className = 'card-footer';
+                        footer.innerHTML = `<div class="card-title">IMG ${i+1}</div>`;
+                        card.append(prev, footer);
+                        grid.appendChild(card);
                     }
-                    const bytes = await pdfDoc.save();
-                    downloadFile(new Blob([bytes], { type: 'application/pdf' }), 'images_converted.pdf');
-                } catch (err) { console.error(err); alert('圖片轉 PDF 時發生錯誤。'); } 
-                finally { hideLoader(); clearWorkspace('image'); }
-            });
-
-            // ---- Drag and Drop for Upload ----
-            ['merge', 'delete', 'rotate', 'image'].forEach(module => {
-                const area = ui[module].uploadArea;
-                area.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); area.firstElementChild.style.borderColor = '#0078d4'; });
-                area.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); area.firstElementChild.style.borderColor = '#b0b0b0'; });
-                area.addEventListener('drop', (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    area.firstElementChild.style.borderColor = '#b0b0b0';
-                    ui[module].input.files = e.dataTransfer.files;
-                    ui[module].input.dispatchEvent(new Event('change'));
+                    reader.readAsDataURL(f);
                 });
-            });
-        });
-    </script>
+                document.getElementById('upload-image').classList.add('hidden');
+                document.getElementById('work-image').classList.remove('hidden');
+                document.getElementById('info-image').textContent = `${files.length} 張圖片`;
+            },
+            execute: async () => {
+                if(!app.state.image.files.length) return;
+                app.ui.loader(true);
+                try {
+                    const doc = await PDFDocument.create();
+                    for(let f of app.state.image.files) {
+                        const buffer = await f.arrayBuffer();
+                        let img;
+                        if(f.type === 'image/jpeg') img = await doc.embedJpg(buffer);
+                        else img = await doc.embedPng(buffer);
+                        const page = doc.addPage([img.width, img.height]);
+                        page.drawImage(img, {x:0, y:0, width:img.width, height:img.height});
+                    }
+                    app.download(await doc.save(), 'images_spectrum.pdf');
+                    app.ui.toast('轉換成功');
+                } catch(e) { app.ui.toast('轉換失敗', 'error'); }
+                finally { app.ui.loader(false); }
+            }
+        },
+
+        // --- Utilities ---
+        // --- 修正點：移除 JS 手動 Scale，依賴 CSS 與 動態 maxWidth 解決旋轉溢出 ---
+        fitCanvas: (canvas, w, h, rot) => {
+            const isVert = Math.abs(rot) % 180 === 90;
+            
+            if (isVert) {
+                // 90/270度：畫布的 Layout Width 變成視覺 Height。
+                // 限制 Layout Width (maxWidth) 為容器可用高度 (220-16=204px)，防止上下溢出。
+                // 限制 Layout Height (maxHeight) 為 100%，確保視覺寬度不超過容器寬度。
+                canvas.style.maxWidth = '204px'; 
+                canvas.style.maxHeight = '100%';
+            } else {
+                // 0/180度：正常 CSS 限制
+                canvas.style.maxWidth = '100%';
+                canvas.style.maxHeight = '100%';
+            }
+            
+            canvas.style.transform = `rotate(${rot}deg)`;
+        },
+        setupDrag: (elem, input) => {
+            elem.ondragover = (e) => { e.preventDefault(); elem.style.borderColor = 'var(--spectrum-global-color-blue-500)'; elem.style.backgroundColor = '#f0f8ff'; };
+            elem.ondragleave = (e) => { e.preventDefault(); elem.style.borderColor = ''; elem.style.backgroundColor = ''; };
+            elem.ondrop = (e) => {
+                e.preventDefault();
+                elem.style.borderColor = ''; elem.style.backgroundColor = '';
+                input.files = e.dataTransfer.files;
+                input.dispatchEvent(new Event('change'));
+            };
+        },
+        download: (bytes, name) => {
+            const blob = new Blob([bytes], {type:'application/pdf'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = name;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+        }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; });
+        document.addEventListener('drop', e => { e.preventDefault(); });
+        app.merge.init();
+        app.delete.init();
+        app.rotate.init();
+        app.image.init();
+    });
+</script>
 </body>
-
 </html>
-
