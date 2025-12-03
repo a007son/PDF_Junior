@@ -159,9 +159,9 @@
         }
 
         .dropzone-icon {
-            font-size: 48px;
+            font-size: 64px;
             color: var(--spectrum-global-color-gray-400);
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             transition: color 0.2s;
         }
         
@@ -380,7 +380,7 @@
         .toast.error { border-left: 4px solid #D7373F; }
 
         .hidden { display: none !important; }
-        .material-icons-outlined { font-size: 18px; }
+        .material-icons-outlined { font-size: 20px; }
     </style>
 </head>
 <body>
@@ -389,7 +389,7 @@
     <header class="spectrum-header">
         <div class="brand">
             <div class="brand-icon">P</div>
-            <span>PDF Tools</span>
+            <span>PDF Junior</span>
         </div>
         <nav class="spectrum-tabs">
             <div class="tab-item selected" onclick="app.switchTab('merge')" data-target="merge">合併檔案</div>
@@ -407,7 +407,7 @@
         <div id="panel-merge" class="panel active">
             <div id="upload-merge" class="dropzone">
                 <span class="material-icons-outlined dropzone-icon">library_add</span>
-                <h3>合併多個 PDF 檔案</h3>
+                <h3>合併多個 PDF</h3>
                 <p>將檔案拖曳至此或點擊上傳</p>
                 <input type="file" id="input-merge" accept=".pdf" multiple hidden>
             </div>
@@ -445,7 +445,7 @@
                     <button class="spectrum-btn" onclick="app.reset('delete')">關閉檔案</button>
                 </div>
                 <p style="text-align:center; color:var(--spectrum-global-color-gray-500); margin-bottom:20px; font-size:14px;">
-                    點擊頁面以標記為 <span style="color:var(--spectrum-global-color-red-500); font-weight:bold;">刪除</span>
+                    點擊卡片以標記為 <span style="color:var(--spectrum-global-color-red-500); font-weight:bold;">刪除</span>
                 </p>
                 <div id="grid-delete" class="grid-view"></div>
                 <div class="action-bar">
@@ -934,4 +934,3 @@
 </script>
 </body>
 </html>
-
