@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Junior</title>
+    <title>PDF Tools (Spectrum Design)</title>
     
     <!-- 1. PDF.js (v3.11.174) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -23,7 +23,7 @@
             --spectrum-global-color-gray-300: #d5d5d5;
             --spectrum-global-color-gray-400: #b6b6b6;
             --spectrum-global-color-gray-500: #909090;
-            --spectrum-global-color-gray-600: #6e6e6e; /* Added for darker gray text */
+            --spectrum-global-color-gray-600: #6e6e6e;
             --spectrum-global-color-gray-800: #464646;
             --spectrum-global-color-gray-900: #2c2c2c;
 
@@ -78,7 +78,6 @@
             color: var(--spectrum-global-color-gray-900);
         }
         
-        /* 模擬 Adobe Logo 方塊 */
         .brand-icon {
             width: 28px;
             height: 28px;
@@ -145,7 +144,13 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 200px;
+            min-height: 240px;
+            position: relative;
+        }
+
+        /* 重要修正：防止子元素干擾拖曳事件 */
+        .dropzone * {
+            pointer-events: none;
         }
 
         .dropzone:hover {
@@ -154,14 +159,14 @@
         }
 
         .dropzone-icon {
-            font-size: 48px;
+            font-size: 64px;
             color: var(--spectrum-global-color-gray-400);
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             transition: color 0.2s;
         }
         
         .dropzone:hover .dropzone-icon {
-            color: var(--spectrum-global-color-blue-400);			 
+            color: var(--spectrum-global-color-blue-400);
         }
         
         .dropzone h3 { margin: 0 0 8px 0; font-size: 18px; color: var(--spectrum-global-color-gray-800); }
@@ -195,7 +200,7 @@
             border: 1px solid var(--spectrum-global-color-gray-400);
             color: var(--spectrum-global-color-gray-800);
             padding: 6px 16px;
-            border-radius: 16px; /* Pill shape standard in some Spectrum contexts */
+            border-radius: 16px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -260,11 +265,9 @@
         
         .spectrum-card.dragging { opacity: 0.5; border: 2px dashed var(--spectrum-global-color-gray-400); background: #f9f9f9; }
         
-        /* Drop indicators */
         .spectrum-card.insert-before { border-left: 4px solid var(--spectrum-global-color-blue-500); }
         .spectrum-card.insert-after { border-right: 4px solid var(--spectrum-global-color-blue-500); }
 
-        /* --- 修正點：加大預覽區域與減少內距 --- */
         .card-preview {
             height: 220px;
             background-color: var(--spectrum-global-color-gray-50);
@@ -272,11 +275,10 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            padding: 8px; /* 減少內距 */
+            padding: 8px;
             position: relative;
         }
         
-        /* --- 修正點：讓 Canvas 盡量佔滿 --- */
         .card-preview canvas, .card-preview img {
             box-shadow: 0 2px 8px rgba(0,0,0,0.15);
             transition: transform 0.3s cubic-bezier(0.45, 0, 0.55, 1);
@@ -304,7 +306,6 @@
             max-width: 100px;
         }
 
-        /* Delete Selection State */
         .spectrum-card.selected {
             border: 2px solid var(--spectrum-global-color-red-500);
         }
@@ -320,20 +321,18 @@
             padding: 12px;
         }
 
-        /* --- Footer Action Bar --- */
         .action-bar {
             text-align: right;
             padding-top: 24px;
             border-top: 1px solid var(--spectrum-global-color-gray-200);
         }
 
-        /* --- Footer (New) --- */
         .spectrum-footer {
             background-color: var(--spectrum-alias-background-color-default);
             border-top: 1px solid var(--spectrum-global-color-gray-200);
             padding: 24px;
             text-align: center;
-            margin-top: auto; /* Stick to bottom if content is short */
+            margin-top: auto;
         }
         
         .footer-text {
@@ -351,7 +350,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* --- Loaders & Notifications --- */
         .overlay {
             position: fixed; inset: 0; background: rgba(255,255,255,0.85);
             backdrop-filter: blur(2px);
@@ -381,9 +379,8 @@
         .toast.success { border-left: 4px solid #2D9D78; }
         .toast.error { border-left: 4px solid #D7373F; }
 
-        /* Utility */
         .hidden { display: none !important; }
-        .material-icons-outlined { font-size: 18px; }
+        .material-icons-outlined { font-size: 20px; }
     </style>
 </head>
 <body>
@@ -392,7 +389,7 @@
     <header class="spectrum-header">
         <div class="brand">
             <div class="brand-icon">P</div>
-            <span>PDF Junior</span>
+            <span>PDF Tools</span>
         </div>
         <nav class="spectrum-tabs">
             <div class="tab-item selected" onclick="app.switchTab('merge')" data-target="merge">合併檔案</div>
@@ -400,9 +397,7 @@
             <div class="tab-item" onclick="app.switchTab('rotate')" data-target="rotate">旋轉頁面</div>
             <div class="tab-item" onclick="app.switchTab('image')" data-target="image">圖片轉 PDF</div>
         </nav>
-        <div>
-            <!-- Placeholder for User/Settings if needed -->
-        </div>
+        <div></div>
     </header>
 
     <!-- Main Content -->
@@ -412,8 +407,8 @@
         <div id="panel-merge" class="panel active">
             <div id="upload-merge" class="dropzone">
                 <span class="material-icons-outlined dropzone-icon">library_add</span>
-                <h3>合併多個 PDF</h3>
-                <p>將檔案拖曳至此，或點擊上傳</p>
+                <h3>合併多個 PDF 檔案</h3>
+                <p>將檔案拖曳至此或點擊上傳</p>
                 <input type="file" id="input-merge" accept=".pdf" multiple hidden>
             </div>
             
@@ -437,7 +432,7 @@
             <div id="upload-delete" class="dropzone">
                 <span class="material-icons-outlined dropzone-icon">delete_sweep</span>
                 <h3>刪除 PDF 頁面</h3>
-                <p>上傳檔案後點選要移除的頁面</p>
+                <p>將檔案拖曳至此或點擊上傳</p>
                 <input type="file" id="input-delete" accept=".pdf" hidden>
             </div>
             
@@ -450,7 +445,7 @@
                     <button class="spectrum-btn" onclick="app.reset('delete')">關閉檔案</button>
                 </div>
                 <p style="text-align:center; color:var(--spectrum-global-color-gray-500); margin-bottom:20px; font-size:14px;">
-                    點擊卡片以標記為 <span style="color:var(--spectrum-global-color-red-500); font-weight:bold;">刪除</span>
+                    點擊頁面以標記為 <span style="color:var(--spectrum-global-color-red-500); font-weight:bold;">刪除</span>
                 </p>
                 <div id="grid-delete" class="grid-view"></div>
                 <div class="action-bar">
@@ -464,7 +459,7 @@
             <div id="upload-rotate" class="dropzone">
                 <span class="material-icons-outlined dropzone-icon">rotate_right</span>
                 <h3>旋轉 PDF 頁面</h3>
-                <p>調整個別頁面方向</p>
+                <p>將檔案拖曳至此或點擊上傳</p>
                 <input type="file" id="input-rotate" accept=".pdf" hidden>
             </div>
             
@@ -488,6 +483,7 @@
             <div id="upload-image" class="dropzone">
                 <span class="material-icons-outlined dropzone-icon">image</span>
                 <h3>圖片轉 PDF</h3>
+                <p>將檔案拖曳至此或點擊上傳</p>
                 <p>支援 JPG 與 PNG 格式</p>
                 <input type="file" id="input-image" accept="image/png, image/jpeg" multiple hidden>
             </div>
@@ -514,6 +510,7 @@
         <p class="footer-text">所有操作均在本機瀏覽器完成，您的檔案不會被上傳。</p>
         <p class="footer-credit">code with Gemini 3 PRO</p>
     </footer>
+
     <!-- Overlay & Toast -->
     <div id="loader" class="overlay">
         <div class="spectrum-loader"></div>
@@ -566,11 +563,11 @@
             init: () => {
                 const zone = document.getElementById('upload-merge');
                 const input = document.getElementById('input-merge');
-                zone.onclick = () => input.click();
+                // 修正：檢查點擊目標，防止遞迴點擊
+                zone.onclick = (e) => { if(e.target !== input) input.click(); };
                 app.setupDrag(zone, input);
                 input.onchange = (e) => app.merge.process(Array.from(e.target.files));
                 
-                // Grid Drag logic
                 const grid = document.getElementById('grid-merge');
                 grid.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
                 grid.ondrop = (e) => { e.preventDefault(); document.querySelectorAll('.spectrum-card').forEach(c => c.classList.remove('insert-before', 'insert-after')); };
@@ -582,9 +579,9 @@
                 try {
                     const newItems = await Promise.all(files.map(async (file) => {
                         const buffer = await file.arrayBuffer();
-                        const pdf = await pdfjsLib.getDocument(buffer).promise;
+                        // 修正：使用 slice(0) 複製 Buffer，避免 PDF.js Worker 轉移記憶體所有權導致後續存檔失敗
+                        const pdf = await pdfjsLib.getDocument(buffer.slice(0)).promise;
                         const page = await pdf.getPage(1);
-                        // --- 修正點：提高渲染比例，讓大圖更清晰 (0.5 -> 0.8) ---
                         const viewport = page.getViewport({scale: 0.8}); 
                         const canvas = document.createElement('canvas');
                         canvas.width = viewport.width; canvas.height = viewport.height;
@@ -608,7 +605,6 @@
                     card.className = 'spectrum-card';
                     card.draggable = true;
                     
-                    // Drag Events
                     card.ondragstart = (e) => { e.dataTransfer.setData('idx', idx); setTimeout(() => card.classList.add('dragging'),0); };
                     card.ondragend = () => { card.classList.remove('dragging'); document.querySelectorAll('.spectrum-card').forEach(c=>c.classList.remove('insert-before','insert-after')); };
                     card.ondragover = (e) => {
@@ -669,7 +665,7 @@
                     }
                     app.download(await doc.save(), 'merged_spectrum.pdf');
                     app.ui.toast('合併成功！');
-                } catch(e) { app.ui.toast('合併失敗', 'error'); }
+                } catch(e) { console.error(e); app.ui.toast('合併失敗', 'error'); }
                 finally { app.ui.loader(false); }
             }
         },
@@ -679,7 +675,7 @@
             init: () => {
                 const zone = document.getElementById('upload-delete');
                 const input = document.getElementById('input-delete');
-                zone.onclick = () => input.click();
+                zone.onclick = (e) => { if(e.target !== input) input.click(); };
                 app.setupDrag(zone, input);
                 input.onchange = (e) => app.delete.process(e.target.files[0]);
             },
@@ -689,11 +685,11 @@
                 try {
                     app.state.delete.file = file;
                     app.state.delete.buffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument(app.state.delete.buffer).promise;
+                    // 修正：Buffer 副本
+                    const pdf = await pdfjsLib.getDocument(app.state.delete.buffer.slice(0)).promise;
                     app.state.delete.pages = [];
                     for(let i=1; i<=pdf.numPages; i++){
                         const page = await pdf.getPage(i);
-                        // --- 修正點：提高渲染比例 (0.4 -> 0.8) ---
                         const viewport = page.getViewport({scale:0.8});
                         const canvas = document.createElement('canvas');
                         canvas.width = viewport.width; canvas.height = viewport.height;
@@ -740,7 +736,7 @@
                     copied.forEach(p => doc.addPage(p));
                     app.download(await doc.save(), 'edited_spectrum.pdf');
                     app.ui.toast('刪除成功');
-                } catch(e) { app.ui.toast('儲存失敗', 'error'); }
+                } catch(e) { console.error(e); app.ui.toast('儲存失敗', 'error'); }
                 finally { app.ui.loader(false); }
             }
         },
@@ -750,7 +746,7 @@
             init: () => {
                 const zone = document.getElementById('upload-rotate');
                 const input = document.getElementById('input-rotate');
-                zone.onclick = () => input.click();
+                zone.onclick = (e) => { if(e.target !== input) input.click(); };
                 app.setupDrag(zone, input);
                 input.onchange = (e) => app.rotate.process(e.target.files[0]);
             },
@@ -760,11 +756,11 @@
                 try {
                     app.state.rotate.file = file;
                     app.state.rotate.buffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument(app.state.rotate.buffer).promise;
+                    // 修正：Buffer 副本
+                    const pdf = await pdfjsLib.getDocument(app.state.rotate.buffer.slice(0)).promise;
                     app.state.rotate.pages = [];
                     for(let i=1; i<=pdf.numPages; i++){
                         const page = await pdf.getPage(i);
-                        // --- 修正點：提高渲染比例 (0.4 -> 0.8) ---
                         const viewport = page.getViewport({scale:0.8});
                         const canvas = document.createElement('canvas');
                         canvas.width = viewport.width; canvas.height = viewport.height;
@@ -820,7 +816,7 @@
                     });
                     app.download(await src.save(), 'rotated_spectrum.pdf');
                     app.ui.toast('儲存成功');
-                } catch(e) { app.ui.toast('儲存失敗', 'error'); }
+                } catch(e) { console.error(e); app.ui.toast('儲存失敗', 'error'); }
                 finally { app.ui.loader(false); }
             }
         },
@@ -830,7 +826,7 @@
             init: () => {
                 const zone = document.getElementById('upload-image');
                 const input = document.getElementById('input-image');
-                zone.onclick = () => input.click();
+                zone.onclick = (e) => { if(e.target !== input) input.click(); };
                 app.setupDrag(zone, input);
                 input.onchange = (e) => app.image.process(Array.from(e.target.files));
             },
@@ -876,38 +872,45 @@
                     }
                     app.download(await doc.save(), 'images_spectrum.pdf');
                     app.ui.toast('轉換成功');
-                } catch(e) { app.ui.toast('轉換失敗', 'error'); }
+                } catch(e) { console.error(e); app.ui.toast('轉換失敗', 'error'); }
                 finally { app.ui.loader(false); }
             }
         },
 
         // --- Utilities ---
-        // --- 修正點：移除 JS 手動 Scale，依賴 CSS 與 動態 maxWidth 解決旋轉溢出 ---
         fitCanvas: (canvas, w, h, rot) => {
             const isVert = Math.abs(rot) % 180 === 90;
-            
             if (isVert) {
-                // 90/270度：畫布的 Layout Width 變成視覺 Height。
-                // 限制 Layout Width (maxWidth) 為容器可用高度 (220-16=204px)，防止上下溢出。
-                // 限制 Layout Height (maxHeight) 為 100%，確保視覺寬度不超過容器寬度。
                 canvas.style.maxWidth = '204px'; 
                 canvas.style.maxHeight = '100%';
             } else {
-                // 0/180度：正常 CSS 限制
                 canvas.style.maxWidth = '100%';
                 canvas.style.maxHeight = '100%';
             }
-            
             canvas.style.transform = `rotate(${rot}deg)`;
         },
         setupDrag: (elem, input) => {
-            elem.ondragover = (e) => { e.preventDefault(); elem.style.borderColor = 'var(--spectrum-global-color-blue-500)'; elem.style.backgroundColor = '#f0f8ff'; };
-            elem.ondragleave = (e) => { e.preventDefault(); elem.style.borderColor = ''; elem.style.backgroundColor = ''; };
+            elem.ondragover = (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                elem.style.borderColor = 'var(--spectrum-global-color-blue-500)'; 
+                elem.style.backgroundColor = '#f0f8ff'; 
+            };
+            elem.ondragleave = (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                elem.style.borderColor = ''; 
+                elem.style.backgroundColor = ''; 
+            };
             elem.ondrop = (e) => {
                 e.preventDefault();
-                elem.style.borderColor = ''; elem.style.backgroundColor = '';
-                input.files = e.dataTransfer.files;
-                input.dispatchEvent(new Event('change'));
+                e.stopPropagation();
+                elem.style.borderColor = ''; 
+                elem.style.backgroundColor = '';
+                if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    input.dispatchEvent(new Event('change'));
+                }
             };
         },
         download: (bytes, name) => {
@@ -915,8 +918,8 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = name;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a);
+            a.click();
+            URL.revokeObjectURL(url);
         }
     };
 
